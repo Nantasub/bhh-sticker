@@ -44,6 +44,27 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* หน้าต่าง Modal ยืนยันรหัส Admin ก่อนล้างฐานข้อมูล */
+    #adminAuthModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      z-index: 9995;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-modal-box {
+      background: #fff;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      border-top: 6px solid #dc2626;
+    }
+
     /* หน้าต่าง Modal แจ้งเตือนข้อมูลซ้ำตอน Import */
     #dupModalOverlay {
       display: none;
@@ -395,7 +416,7 @@
     @media print {
       @page { size: A4 portrait; margin: 0; }
       body { background: #fff; margin: 0; padding: 0; }
-      #loginScreen, .top-navbar, .print-sidebar, .sheet-caption, #dbView, #adminView, #loadingOverlay, #dupModalOverlay { display: none !important; }
+      #loginScreen, .top-navbar, .print-sidebar, .sheet-caption, #dbView, #adminView, #loadingOverlay, #dupModalOverlay, #adminAuthModal { display: none !important; }
       #mainApp, #printView { display: block !important; padding: 0 !important; margin: 0 !important; }
       .preview-wrapper { background: none; padding: 0; overflow: visible; }
       .a4-sheet {
@@ -417,7 +438,31 @@
     <div id="loadingText" style="font-size:1.1rem; font-weight:600;">กำลังซิงค์ข้อมูลกับ Cloud...</div>
   </div>
 
-  <!-- หน้าต่าง Modal แจ้งเตือนเมื่อพบข้อมูลซ้ำตอน Import Excel -->
+  <!-- หน้าต่าง Modal ยืนยันรหัส Admin ก่อนล้างฐานข้อมูล -->
+  <div id="adminAuthModal">
+    <div class="auth-modal-box">
+      <h3 style="margin-top:0; color:#dc2626; font-family:'Prompt',sans-serif; display:flex; align-items:center; gap:8px;">
+        🔐 ยืนยันตัวตนผู้ดูแลระบบ (Admin)
+      </h3>
+      <p style="font-size:0.88rem; color:#334155; margin-bottom:14px;">
+        การล้างฐานข้อมูลทั้งหมดจะทำให้ข้อมูลรถยนต์ในระบบหายไปถาวร กรุณากรอกรหัสผ่าน Admin เพื่อยืนยันสิทธิ์:
+      </p>
+      <div class="form-group">
+        <label>User ID Admin:</label>
+        <input type="text" id="confirmAdminUser" placeholder="กรอก User ID แอดมิน...">
+      </div>
+      <div class="form-group">
+        <label>Password Admin:</label>
+        <input type="password" id="confirmAdminPass" placeholder="กรอกรหัสผ่านแอดมิน..." onkeydown="if(event.key==='Enter') verifyAndClearDatabase()">
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+        <button class="btn btn-outline" onclick="closeAdminAuthModal()">ยกเลิก</button>
+        <button class="btn btn-danger" onclick="verifyAndClearDatabase()">🗑️ ยืนยันล้างข้อมูลทั้งหมด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- หน้าต่าง Modal แจ้งเตือนข้อมูลซ้ำตอน Import -->
   <div id="dupModalOverlay">
     <div class="modal-box">
       <h3 style="margin-top:0; color:#b45309; font-family:'Prompt',sans-serif; display:flex; align-items:center; gap:8px;">
@@ -499,7 +544,7 @@
     <!-- =================================================================== -->
     <div class="page-view active" id="dbView">
 
-      <!-- ป้ายแจ้งสถานะโหมดดูอย่างเดียว (สำหรับ User ทั่วไป) -->
+      <!-- ป้ายแจ้งสถานะโหมดดูอย่างเดียว -->
       <div id="viewerNoticeBanner" class="card" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; border-left:5px solid #0284c7; padding:12px 16px;">
         <strong style="color:#0369a1; font-size:0.95rem;">🔎 โหมดตรวจสอบข้อมูล (สำหรับผู้ใช้งานทั่วไป - View Only)</strong>
         <span style="font-size:0.85rem; color:#334155; margin-left:8px;">คุณสามารถค้นหาป้ายทะเบียน ชื่อเจ้าของรถ และกรองดูข้อมูลแยกตามแผนกได้ (การแก้ไขข้อมูลและพิมพ์สติกเกอร์สงวนสิทธิ์เฉพาะ Admin)</span>
@@ -517,7 +562,7 @@
             <button class="btn btn-primary" onclick="triggerExcelImport()">📥 Import ไฟล์ Excel (เพิ่มต่อท้ายข้อมูลเดิม)</button>
             <button class="btn btn-success" onclick="exportDatabaseToExcel()">📤 Export เป็น Excel (.xlsx)</button>
             <button class="btn btn-outline" onclick="downloadJsonBackup()">💾 สำรองฐานข้อมูล (.json)</button>
-            <button class="btn btn-danger" id="btnClearAllDb" onclick="clearDatabase()">🗑️ ล้างฐานข้อมูลทั้งหมด</button>
+            <button class="btn btn-danger" id="btnClearAllDb" onclick="openAdminAuthModal()">🗑️ ล้างฐานข้อมูลทั้งหมด</button>
           </div>
         </div>
 
@@ -800,7 +845,7 @@
   let selectedIds = new Set();
   let printSlots = [];
   let colorGroups = [];
-  let pendingImportState = null; // เก็บข้อมูลรอการยืนยันกรณีพบซ้ำตอน Import
+  let pendingImportState = null;
 
   function isAdminUser() {
     return currentUser && currentUser.role === "admin";
@@ -820,7 +865,6 @@
     box.style.display = box.style.display === "none" ? "block" : "none";
   }
 
-  // ฟังก์ชันจัดรูปแบบป้ายทะเบียนเพื่อใช้เช็กซ้ำ (ตัดช่องว่างและแปลงเป็นตัวเล็ก)
   function normalizePlate(plateStr) {
     return String(plateStr || "").replace(/\s+/g, "").toLowerCase();
   }
@@ -1202,8 +1246,50 @@
   }
 
   // =========================================================================
-  // เพิ่มข้อมูลใหม่ด้วยการพิมพ์กรอกเอง (แจ้งเตือนเมื่อพบป้ายทะเบียนซ้ำ)
+  // ฟังก์ชันเปิด/ปิดหน้าต่างยืนยัน Admin ก่อนล้างข้อมูลทั้งหมด
   // =========================================================================
+  function openAdminAuthModal() {
+    if (!isAdminUser()) {
+      alert("เฉพาะ Admin เท่านั้นที่สามารถล้างฐานข้อมูลทั้งหมดได้");
+      return;
+    }
+    document.getElementById("confirmAdminUser").value = "";
+    document.getElementById("confirmAdminPass").value = "";
+    document.getElementById("adminAuthModal").style.display = "flex";
+  }
+
+  function closeAdminAuthModal() {
+    document.getElementById("adminAuthModal").style.display = "none";
+  }
+
+  async function verifyAndClearDatabase() {
+    const u = document.getElementById("confirmAdminUser").value.trim();
+    const p = document.getElementById("confirmAdminPass").value.trim();
+
+    if (!u || !p) {
+      alert("กรุณากรอก User ID และ Password ของ Admin ให้ครบถ้วนครับ");
+      return;
+    }
+
+    // ตรวจสอบว่า User ที่กรอกตรงกับ Admin ในระบบหรือไม่
+    const verifiedAdmin = appUsers.find(item => item.username.toLowerCase() === u.toLowerCase() && item.password === p && item.role === "admin");
+    if (!verifiedAdmin) {
+      alert("❌ ยืนยันตัวตนไม่สำเร็จ: User ID หรือ Password ของ Admin ไม่ถูกต้อง หรือไม่มีสิทธิ์ Admin");
+      return;
+    }
+
+    closeAdminAuthModal();
+
+    if (!confirm("⚠️ คำเตือนขั้นสุดท้าย: คุณแน่ใจจริงๆ หรือไม่ที่จะล้างข้อมูลรถยนต์ทั้งหมดในระบบออนไลน์?")) return;
+
+    dbRecords = [];
+    selectedIds.clear();
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+    alert("🗑️ ล้างฐานข้อมูลทั้งหมดในระบบออนไลน์เรียบร้อยแล้วครับ");
+  }
+
   async function addManualRecord(sendToPrintImmediately) {
     if (!isAdminUser()) return;
 
@@ -1220,7 +1306,6 @@
       return;
     }
 
-    // ตรวจสอบว่ามีป้ายทะเบียนนี้ในฐานข้อมูลอยู่แล้วหรือไม่
     const cleanInputPlate = normalizePlate(plate);
     const matchedExisting = dbRecords.filter(r => normalizePlate(r.plate) === cleanInputPlate);
     let isRepeatRequest = false;
@@ -1233,9 +1318,7 @@
         `• ล่าสุดคือ ลำดับที่ #${latestMatch.seq} | ชื่อ: ${latestMatch.ownerName} | แผนก: ${latestMatch.dept} (วันที่แจ้ง: ${latestMatch.reqDate})\n\n` +
         `คุณต้องการยืนยันเพิ่มข้อมูลซ้ำเป็นรายการใหม่ (เช่น กรณีขอทำสติกเกอร์ใหม่) หรือไม่?`
       );
-      if (!confirmDup) {
-        return; // ถ้ายกเลิก ไม่ทำการบันทึก
-      }
+      if (!confirmDup) return;
       isRepeatRequest = true;
     }
 
@@ -1324,9 +1407,6 @@
     input.click();
   }
 
-  // =========================================================================
-  // ฟังก์ชัน Import Excel พร้อมตรวจสอบข้อมูลซ้ำและถามยืนยันก่อนนำเข้า 100%
-  // =========================================================================
   function importExcelFile(event) {
     if (!isAdminUser()) return;
     const file = event.target.files && event.target.files[0];
@@ -1362,8 +1442,6 @@
           }
 
           const isInitialImport = dbRecords.length === 0;
-
-          // เก็บ Map ของป้ายทะเบียนที่มีอยู่แล้วในระบบเพื่อเทียบหาตัวซ้ำ
           const seenPlatesMap = new Map();
           dbRecords.forEach(r => {
             const pKey = normalizePlate(r.plate);
@@ -1436,12 +1514,10 @@
 
           hideLoading();
 
-          // หากตรวจพบรายการซ้ำ ให้เปิด Modal แจ้งเตือนเพื่อถามยืนยันก่อน
           if (duplicateDetails.length > 0) {
             pendingImportState = { candidates: parsedCandidates, duplicates: duplicateDetails };
             openDuplicateConfirmModal(parsedCandidates.length, duplicateDetails);
           } else {
-            // ถ้าไม่มีซ้ำเลย ให้นำเข้าทั้งหมดทันที
             await executeFinalImport(parsedCandidates, true);
           }
         } catch (err) {
@@ -1906,19 +1982,6 @@
     link.href = URL.createObjectURL(blob);
     link.download = `BHH_Sticker_Backup_${new Date().toISOString().slice(0,10)}.json`;
     link.click();
-  }
-
-  async function clearDatabase() {
-    if (!isAdminUser()) {
-      alert("เฉพาะ Admin เท่านั้นที่สามารถล้างฐานข้อมูลทั้งหมดได้");
-      return;
-    }
-    if (!confirm("⚠️ ยืนยันการล้างข้อมูลรถยนต์ทั้งหมดในระบบออนไลน์?")) return;
-    dbRecords = [];
-    selectedIds.clear();
-    await saveDatabase();
-    populateFilterDropdowns();
-    renderDatabaseTable();
   }
 
   window.onload = initSystem;
