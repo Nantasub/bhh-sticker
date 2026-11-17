@@ -897,7 +897,39 @@
     if (!firebaseBaseUrl) return;
     try {
       showLoading("กำลังดึงข้อมูลล่าสุดจากฐานข้อมูลออนไลน์...");
-      const res = await fetch(`${firebaseBaseUrl}/bhh_sticker_app.json`); if (!res.ok) throw new Error("HTTP " + res.status); const data = await res.json();  if (data) { if (Array.isArray(data.records)) { dbRecords = data.records.filter(Boolean); } else if (data.records && typeof data.records === "object") { dbRecords = Object.values(data.records).filter(Boolean); } else { dbRecords = []; }  if (Array.isArray(data.users) && data.users.length > 0) { appUsers = data.users; } if (Array.isArray(data.colorGroups)) { colorGroups = data.colorGroups; }  localStorage.setItem("bhh_car_database", JSON.stringify(dbRecords)); localStorage.setItem("bhh_app_users", JSON.stringify(appUsers)); localStorage.setItem("bhh_color_groups_v4", JSON.stringify(colorGroups)); } else if (isAdminUser()) { await saveDatabase(); }  hideLoading(); renderColorConfigBar(); populateFilterDropdowns(); renderDatabaseTable(); renderUserTable(); if (showAlert) alert(`✅ ซิงค์ข้อมูลออนไลน์สำเร็จ! (ข้อมูลทั้งหมด ${dbRecords.length} รายการ)`);
+      const res = await fetch(`${firebaseBaseUrl}/bhh_sticker_app.json`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      if (data) {
+        if (Array.isArray(data.records)) {
+          dbRecords = data.records.filter(Boolean);
+        } else if (data.records && typeof data.records === "object") {
+          dbRecords = Object.values(data.records).filter(Boolean);
+        } else {
+          dbRecords = [];
+        }
+
+        if (Array.isArray(data.users) && data.users.length > 0) {
+          appUsers = data.users;
+        }
+        if (Array.isArray(data.colorGroups)) {
+          colorGroups = data.colorGroups;
+        }
+
+        localStorage.setItem("bhh_car_database", JSON.stringify(dbRecords));
+        localStorage.setItem("bhh_app_users", JSON.stringify(appUsers));
+        localStorage.setItem("bhh_color_groups_v4", JSON.stringify(colorGroups));
+      } else if (isAdminUser()) {
+        await saveDatabase();
+      }
+
+      hideLoading();
+      renderColorConfigBar();
+      populateFilterDropdowns();
+      renderDatabaseTable();
+      renderUserTable();
+      if (showAlert) alert(`✅ ซิงค์ข้อมูลออนไลน์สำเร็จ! (ข้อมูลทั้งหมด ${dbRecords.length} รายการ)`);
     } catch (err) {
       hideLoading();
       console.error("Cloud sync error:", err);
@@ -931,10 +963,135 @@
           users: appUsers,
           records: dbRecords
         };
-        const res = await fetch(`${firebaseBaseUrl}/bhh_sticker_app.json`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (!res.ok) throw new Error("HTTP " + res.status); } catch (err) { console.error("Cloud push failed:", err); alert("⚠️ ไม่สามารถบันทึกขึ้น Firebase Cloud ได้ กรุณาตรวจสอบ Rules ของ Firebase"); } } }  async function handleLogin() { const inputUrl = document.getElementById("firebaseUrlInput").value.trim().replace(/\/+$/, ""); if (inputUrl && inputUrl !== firebaseBaseUrl) { firebaseBaseUrl = inputUrl; localStorage.setItem("bhh_firebase_url", firebaseBaseUrl); await syncFromCloud(false); }  const u = document.getElementById("loginUsername").value.trim(); const p = document.getElementById("loginPassword").value.trim();  if (!u \vert{}\vert{} !p) { alert("กรุณากรอก User ID และรหัสผ่านครับ"); return; }  const foundUser = appUsers.find(item => item.username.toLowerCase() === u.toLowerCase() && item.password === p); if (!foundUser) { alert("❌ User ID หรือ รหัสผ่าน ไม่ถูกต้อง!"); return; }  currentUser = foundUser; sessionStorage.setItem("bhh_logged_user", JSON.stringify(currentUser)); enterMainApp(); }  function enterMainApp() { document.getElementById("loginScreen").style.display = "none"; document.getElementById("mainApp").style.display = "block";  const isAdmin = isAdminUser(); const roleLabel = isAdmin ? "ADMIN - จัดการระบบและพิมพ์สติกเกอร์" : "USER - ตรวจสอบข้อมูลอย่างเดียว"; document.getElementById("currentUserDisplay").innerText = `👤 ${currentUser.displayName} (${roleLabel})`;  document.getElementById("tabPrintBtn").style.display = isAdmin ? "inline-block" : "none"; document.getElementById("tabAdminBtn").style.display = isAdmin ? "inline-block" : "none";  document.getElementById("viewerNoticeBanner").style.display = isAdmin ? "none" : "block"; document.getElementById("adminManageDbCard").style.display = isAdmin ? "block" : "none"; document.getElementById("adminAddRecordCard").style.display = isAdmin ? "block" : "none"; document.getElementById("adminBulkActionBtns").style.display = isAdmin ? "flex" : "none"; document.getElementById("selectedCountWrapper").style.display = isAdmin ? "inline" : "none";  document.getElementById("thCheckboxCol").style.display = isAdmin ? "table-cell" : "none"; document.getElementById("thActionCol").style.display = isAdmin ? "table-cell" : "none";  switchTab("db");  updateCloudBadge(); renderColorConfigBar(); populateFilterDropdowns(); renderDatabaseTable(); if (isAdmin) { renderSlotInputs(); renderStickerSheet(); renderUserTable(); } }  function handleLogout() { sessionStorage.removeItem("bhh_logged_user"); currentUser = null; selectedIds.clear(); document.getElementById("loginPassword").value = ""; document.getElementById("mainApp").style.display = "none"; document.getElementById("loginScreen").style.display = "flex"; }  async function createOrUpdateUser() { if (!isAdminUser()) return;  const uid = document.getElementById("newUserId").value.trim(); const pass = document.getElementById("newUserPass").value.trim(); const name = document.getElementById("newUserName").value.trim(); const role = document.getElementById("newUserRole").value;  if (!uid \vert{}\vert{} !pass \vert{}\vert{} !name) { alert("กรุณากรอก User ID, รหัสผ่าน และชื่อผู้ใช้งานให้ครบถ้วนครับ"); return; }  const existingIdx = appUsers.findIndex(u => u.username.toLowerCase() === uid.toLowerCase()); if (existingIdx >= 0) { appUsers[existingIdx] = { username: uid, password: pass, displayName: name, role: role }; alert(`อัปเดตข้อมูลและสิทธิ์ของ "${uid}" เรียบร้อยแล้ว!`);
+        const res = await fetch(`${firebaseBaseUrl}/bhh_sticker_app.json`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+      } catch (err) {
+        console.error("Cloud push failed:", err);
+        alert("⚠️ ไม่สามารถบันทึกขึ้น Firebase Cloud ได้ กรุณาตรวจสอบ Rules ของ Firebase");
+      }
+    }
+  }
+
+  async function handleLogin() {
+    const inputUrl = document.getElementById("firebaseUrlInput").value.trim().replace(/\/+$/, "");
+    if (inputUrl && inputUrl !== firebaseBaseUrl) {
+      firebaseBaseUrl = inputUrl;
+      localStorage.setItem("bhh_firebase_url", firebaseBaseUrl);
+      await syncFromCloud(false);
+    }
+
+    const u = document.getElementById("loginUsername").value.trim();
+    const p = document.getElementById("loginPassword").value.trim();
+
+    if (!u || !p) {
+      alert("กรุณากรอก User ID และรหัสผ่านครับ");
+      return;
+    }
+
+    const foundUser = appUsers.find(item => item.username.toLowerCase() === u.toLowerCase() && item.password === p);
+    if (!foundUser) {
+      alert("❌ User ID หรือ รหัสผ่าน ไม่ถูกต้อง!");
+      return;
+    }
+
+    currentUser = foundUser;
+    sessionStorage.setItem("bhh_logged_user", JSON.stringify(currentUser));
+    enterMainApp();
+  }
+
+  function enterMainApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("mainApp").style.display = "block";
+
+    const isAdmin = isAdminUser();
+    const roleLabel = isAdmin ? "ADMIN - จัดการระบบและพิมพ์สติกเกอร์" : "USER - ตรวจสอบข้อมูลอย่างเดียว";
+    document.getElementById("currentUserDisplay").innerText = `👤 ${currentUser.displayName} (${roleLabel})`;
+
+    document.getElementById("tabPrintBtn").style.display = isAdmin ? "inline-block" : "none";
+    document.getElementById("tabAdminBtn").style.display = isAdmin ? "inline-block" : "none";
+
+    document.getElementById("viewerNoticeBanner").style.display = isAdmin ? "none" : "block";
+    document.getElementById("adminManageDbCard").style.display = isAdmin ? "block" : "none";
+    document.getElementById("adminAddRecordCard").style.display = isAdmin ? "block" : "none";
+    document.getElementById("adminBulkActionBtns").style.display = isAdmin ? "flex" : "none";
+    document.getElementById("selectedCountWrapper").style.display = isAdmin ? "inline" : "none";
+
+    document.getElementById("thCheckboxCol").style.display = isAdmin ? "table-cell" : "none";
+    document.getElementById("thActionCol").style.display = isAdmin ? "table-cell" : "none";
+
+    switchTab("db");
+
+    updateCloudBadge();
+    renderColorConfigBar();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+    if (isAdmin) {
+      renderSlotInputs();
+      renderStickerSheet();
+      renderUserTable();
+    }
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem("bhh_logged_user");
+    currentUser = null;
+    selectedIds.clear();
+    document.getElementById("loginPassword").value = "";
+    document.getElementById("mainApp").style.display = "none";
+    document.getElementById("loginScreen").style.display = "flex";
+  }
+
+  async function createOrUpdateUser() {
+    if (!isAdminUser()) return;
+
+    const uid = document.getElementById("newUserId").value.trim();
+    const pass = document.getElementById("newUserPass").value.trim();
+    const name = document.getElementById("newUserName").value.trim();
+    const role = document.getElementById("newUserRole").value;
+
+    if (!uid || !pass || !name) {
+      alert("กรุณากรอก User ID, รหัสผ่าน และชื่อผู้ใช้งานให้ครบถ้วนครับ");
+      return;
+    }
+
+    const existingIdx = appUsers.findIndex(u => u.username.toLowerCase() === uid.toLowerCase());
+    if (existingIdx >= 0) {
+      appUsers[existingIdx] = { username: uid, password: pass, displayName: name, role: role };
+      alert(`อัปเดตข้อมูลและสิทธิ์ของ "${uid}" เรียบร้อยแล้ว!`);
     } else {
       appUsers.push({ username: uid, password: pass, displayName: name, role: role });
-      alert(`สร้างบัญชีผู้ใช้งาน "${uid}" เรียบร้อยแล้ว!`); }  document.getElementById("newUserId").value = ""; document.getElementById("newUserPass").value = ""; document.getElementById("newUserName").value = "";  await saveDatabase(); renderUserTable(); }  function editUserForm(username) { if (!isAdminUser()) return; const u = appUsers.find(item => item.username === username); if (!u) return; document.getElementById("newUserId").value = u.username; document.getElementById("newUserPass").value = u.password; document.getElementById("newUserName").value = u.displayName; document.getElementById("newUserRole").value = u.role; }  async function deleteUserAccount(username) { if (!isAdminUser()) return; if (username.toLowerCase() === "admin") { alert("ไม่สามารถลบบัญชี admin หลักได้ (แต่สามารถแก้ไขรหัสผ่านได้ครับ)"); return; } if (!confirm(`ยืนยันการลบบัญชีผู้ใช้งาน "${username}" ?`)) return;
+      alert(`สร้างบัญชีผู้ใช้งาน "${uid}" เรียบร้อยแล้ว!`);
+    }
+
+    document.getElementById("newUserId").value = "";
+    document.getElementById("newUserPass").value = "";
+    document.getElementById("newUserName").value = "";
+
+    await saveDatabase();
+    renderUserTable();
+  }
+
+  function editUserForm(username) {
+    if (!isAdminUser()) return;
+    const u = appUsers.find(item => item.username === username);
+    if (!u) return;
+    document.getElementById("newUserId").value = u.username;
+    document.getElementById("newUserPass").value = u.password;
+    document.getElementById("newUserName").value = u.displayName;
+    document.getElementById("newUserRole").value = u.role;
+  }
+
+  async function deleteUserAccount(username) {
+    if (!isAdminUser()) return;
+    if (username.toLowerCase() === "admin") {
+      alert("ไม่สามารถลบบัญชี admin หลักได้ (แต่สามารถแก้ไขรหัสผ่านได้ครับ)");
+      return;
+    }
+    if (!confirm(`ยืนยันการลบบัญชีผู้ใช้งาน "${username}" ?`)) return;
 
     appUsers = appUsers.filter(u => u.username !== username);
     await saveDatabase();
@@ -1072,8 +1229,65 @@
       const latestMatch = matchedExisting[matchedExisting.length - 1];
       const confirmDup = confirm(
         `⚠️ แจ้งเตือนพบข้อมูลป้ายทะเบียนซ้ำในระบบ!\n\n` +
-        `• ทะเบียน "${plate}" เคยมีอยู่ในระบบแล้วจำนวน ${matchedExisting.length} รายการ\n` + `• ล่าสุดคือ ลำดับที่ #${latestMatch.seq} | ชื่อ: ${latestMatch.ownerName} \vert{} แผนก: ${latestMatch.dept} (วันที่แจ้ง: ${latestMatch.reqDate})\n\n` + `คุณต้องการยืนยันเพิ่มข้อมูลซ้ำเป็นรายการใหม่ (เช่น กรณีขอทำสติกเกอร์ใหม่) หรือไม่?` ); if (!confirmDup) { return; // ถ้ายกเลิก ไม่ทำการบันทึก } isRepeatRequest = true; }  const nextSeq = dbRecords.length > 0 ? Math.max(...dbRecords.map(r => Number(r.seq) \vert{}\vert{} 0)) + 1 : 1; const todayStr = new Date().toLocaleDateString("th-TH", { year: 'numeric', month: '2-digit', day: '2-digit' });  const newRec = { id: "row_" + Date.now(), seq: nextSeq, reqDate: todayStr, ownerName: ownerName \vert{}\vert{} "-", empType: empType, groupId: resolveGroupIdByEmpType(empType), dept: dept \vert{}\vert{} empType, vehicleType: vehicleType, brand: brandColor, model: "", color: "", plate: plate, province: province, note: isRepeatRequest ? `ขอทำใหม่/ซ้ำ (เพิ่มโดย ${currentUser ? currentUser.username : 'admin'})`
-        : `เพิ่มโดย ${currentUser ? currentUser.username : 'admin'}`, isRepeat: isRepeatRequest, printed: false };  dbRecords.push(newRec); await saveDatabase(); populateFilterDropdowns(); renderDatabaseTable();  document.getElementById("addOwner").value = ""; document.getElementById("addPlate").value = ""; document.getElementById("addBrandColor").value = "";  if (sendToPrintImmediately) { addSingleRecordToPrint(newRec.id); switchTab("print"); } else { alert(`✅ บันทึกข้อมูลทะเบียน "${plate}" (ลำดับที่ #${nextSeq}) ขึ้นระบบออนไลน์เรียบร้อยแล้วครับ!`); } }  async function deleteSelectedRecords() { if (!isAdminUser()) return; if (selectedIds.size === 0) { alert("กรุณาติ๊กถูกหน้ารายการที่ต้องการลบอย่างน้อย 1 รายการก่อนครับ"); return; } const count = selectedIds.size; if (!confirm(`ยืนยันการลบข้อมูลที่เลือกไว้จำนวน ${count} รายการออกจากระบบออนไลน์ใช่หรือไม่?`)) return;
+        `• ทะเบียน "${plate}" เคยมีอยู่ในระบบแล้วจำนวน ${matchedExisting.length} รายการ\n` +
+        `• ล่าสุดคือ ลำดับที่ #${latestMatch.seq} | ชื่อ: ${latestMatch.ownerName} | แผนก: ${latestMatch.dept} (วันที่แจ้ง: ${latestMatch.reqDate})\n\n` +
+        `คุณต้องการยืนยันเพิ่มข้อมูลซ้ำเป็นรายการใหม่ (เช่น กรณีขอทำสติกเกอร์ใหม่) หรือไม่?`
+      );
+      if (!confirmDup) {
+        return; // ถ้ายกเลิก ไม่ทำการบันทึก
+      }
+      isRepeatRequest = true;
+    }
+
+    const nextSeq = dbRecords.length > 0 ? Math.max(...dbRecords.map(r => Number(r.seq) || 0)) + 1 : 1;
+    const todayStr = new Date().toLocaleDateString("th-TH", { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+    const newRec = {
+      id: "row_" + Date.now(),
+      seq: nextSeq,
+      reqDate: todayStr,
+      ownerName: ownerName || "-",
+      empType: empType,
+      groupId: resolveGroupIdByEmpType(empType),
+      dept: dept || empType,
+      vehicleType: vehicleType,
+      brand: brandColor,
+      model: "",
+      color: "",
+      plate: plate,
+      province: province,
+      note: isRepeatRequest
+        ? `ขอทำใหม่/ซ้ำ (เพิ่มโดย ${currentUser ? currentUser.username : 'admin'})`
+        : `เพิ่มโดย ${currentUser ? currentUser.username : 'admin'}`,
+      isRepeat: isRepeatRequest,
+      printed: false
+    };
+
+    dbRecords.push(newRec);
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+
+    document.getElementById("addOwner").value = "";
+    document.getElementById("addPlate").value = "";
+    document.getElementById("addBrandColor").value = "";
+
+    if (sendToPrintImmediately) {
+      addSingleRecordToPrint(newRec.id);
+      switchTab("print");
+    } else {
+      alert(`✅ บันทึกข้อมูลทะเบียน "${plate}" (ลำดับที่ #${nextSeq}) ขึ้นระบบออนไลน์เรียบร้อยแล้วครับ!`);
+    }
+  }
+
+  async function deleteSelectedRecords() {
+    if (!isAdminUser()) return;
+    if (selectedIds.size === 0) {
+      alert("กรุณาติ๊กถูกหน้ารายการที่ต้องการลบอย่างน้อย 1 รายการก่อนครับ");
+      return;
+    }
+    const count = selectedIds.size;
+    if (!confirm(`ยืนยันการลบข้อมูลที่เลือกไว้จำนวน ${count} รายการออกจากระบบออนไลน์ใช่หรือไม่?`)) return;
 
     dbRecords = dbRecords.filter(r => !selectedIds.has(r.id));
     selectedIds.clear();
@@ -1082,7 +1296,43 @@
     await saveDatabase();
     populateFilterDropdowns();
     renderDatabaseTable();
-    alert(`ลบข้อมูลจำนวน ${count} รายการเรียบร้อยแล้วครับ`); }  async function deleteSingleRecord(id) { if (!isAdminUser()) return; const rec = dbRecords.find(r => r.id === id); if (!rec) return; if (!confirm(`ต้องการลบข้อมูลทะเบียน "${rec.plate}" (${rec.ownerName}) ใช่หรือไม่?`)) return;  dbRecords = dbRecords.filter(r => r.id !== id); selectedIds.delete(id);  await saveDatabase(); populateFilterDropdowns(); renderDatabaseTable(); }  function triggerExcelImport() { if (!isAdminUser()) return; if (typeof XLSX === "undefined") { alert("⚠️ ไม่สามารถโหลดไลบรารีอ่านไฟล์ Excel ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด Refresh (F5) ครับ"); return; } const input = document.getElementById("excelFileInput"); input.value = ""; input.click(); }  // ========================================================================= // ฟังก์ชัน Import Excel พร้อมตรวจสอบข้อมูลซ้ำและถามยืนยันก่อนนำเข้า 100\% // ========================================================================= function importExcelFile(event) { if (!isAdminUser()) return; const file = event.target.files && event.target.files[0]; if (!file) return;  showLoading(`กำลังอ่านและตรวจสอบข้อมูลซ้ำในไฟล์ "${file.name}"...`);
+    alert(`ลบข้อมูลจำนวน ${count} รายการเรียบร้อยแล้วครับ`);
+  }
+
+  async function deleteSingleRecord(id) {
+    if (!isAdminUser()) return;
+    const rec = dbRecords.find(r => r.id === id);
+    if (!rec) return;
+    if (!confirm(`ต้องการลบข้อมูลทะเบียน "${rec.plate}" (${rec.ownerName}) ใช่หรือไม่?`)) return;
+
+    dbRecords = dbRecords.filter(r => r.id !== id);
+    selectedIds.delete(id);
+
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+  }
+
+  function triggerExcelImport() {
+    if (!isAdminUser()) return;
+    if (typeof XLSX === "undefined") {
+      alert("⚠️ ไม่สามารถโหลดไลบรารีอ่านไฟล์ Excel ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด Refresh (F5) ครับ");
+      return;
+    }
+    const input = document.getElementById("excelFileInput");
+    input.value = "";
+    input.click();
+  }
+
+  // =========================================================================
+  // ฟังก์ชัน Import Excel พร้อมตรวจสอบข้อมูลซ้ำและถามยืนยันก่อนนำเข้า 100%
+  // =========================================================================
+  function importExcelFile(event) {
+    if (!isAdminUser()) return;
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    showLoading(`กำลังอ่านและตรวจสอบข้อมูลซ้ำในไฟล์ "${file.name}"...`);
 
     setTimeout(() => {
       const reader = new FileReader();
@@ -1158,15 +1408,66 @@
                 ownerName: ownerName,
                 dept: dept,
                 reqDate: reqDate,
-                prevInfo: `ซ้ำกับลำดับ #${prev.seq} (${prev.owner} - วันที่ ${prev.date})` }); } else if (pKey) { seenPlatesMap.set(pKey, { seq: excelRowOrder, owner: ownerName, date: reqDate, source: "ในไฟล์เดียวกัน" }); }  parsedCandidates.push({ excelRowOrder, reqDate, ownerName, empType, groupId: resolveGroupIdByEmpType(empType), dept, vehicleType, brand, model, color, plate, province, note, isRepeat: isDup, isInitialImport, totalFileRows: rows.length }); }  hideLoading();  // หากตรวจพบรายการซ้ำ ให้เปิด Modal แจ้งเตือนเพื่อถามยืนยันก่อน if (duplicateDetails.length > 0) { pendingImportState = { candidates: parsedCandidates, duplicates: duplicateDetails }; openDuplicateConfirmModal(parsedCandidates.length, duplicateDetails); } else { // ถ้าไม่มีซ้ำเลย ให้นำเข้าทั้งหมดทันที await executeFinalImport(parsedCandidates, true); } } catch (err) { hideLoading(); alert("❌ ไม่สามารถนำเข้าไฟล์นี้ได้: " + err.message); } }; reader.readAsArrayBuffer(file); }, 80); }  function openDuplicateConfirmModal(totalCount, duplicateDetails) { const dupCount = duplicateDetails.length; const uniqueCount = totalCount - dupCount;  document.getElementById("dupSummaryText").innerHTML = `ไฟล์ที่เลือกมีข้อมูลทั้งหมด <strong>${totalCount} รายการ</strong> (เป็นรายการไม่ซ้ำ <strong>${uniqueCount} รายการ</strong> และพบป้ายทะเบียนซ้ำ <strong>${dupCount} รายการ</strong>)<br>` +
+                prevInfo: `ซ้ำกับลำดับ #${prev.seq} (${prev.owner} - วันที่ ${prev.date})`
+              });
+            } else if (pKey) {
+              seenPlatesMap.set(pKey, { seq: excelRowOrder, owner: ownerName, date: reqDate, source: "ในไฟล์เดียวกัน" });
+            }
+
+            parsedCandidates.push({
+              excelRowOrder,
+              reqDate,
+              ownerName,
+              empType,
+              groupId: resolveGroupIdByEmpType(empType),
+              dept,
+              vehicleType,
+              brand,
+              model,
+              color,
+              plate,
+              province,
+              note,
+              isRepeat: isDup,
+              isInitialImport,
+              totalFileRows: rows.length
+            });
+          }
+
+          hideLoading();
+
+          // หากตรวจพบรายการซ้ำ ให้เปิด Modal แจ้งเตือนเพื่อถามยืนยันก่อน
+          if (duplicateDetails.length > 0) {
+            pendingImportState = { candidates: parsedCandidates, duplicates: duplicateDetails };
+            openDuplicateConfirmModal(parsedCandidates.length, duplicateDetails);
+          } else {
+            // ถ้าไม่มีซ้ำเลย ให้นำเข้าทั้งหมดทันที
+            await executeFinalImport(parsedCandidates, true);
+          }
+        } catch (err) {
+          hideLoading();
+          alert("❌ ไม่สามารถนำเข้าไฟล์นี้ได้: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }, 80);
+  }
+
+  function openDuplicateConfirmModal(totalCount, duplicateDetails) {
+    const dupCount = duplicateDetails.length;
+    const uniqueCount = totalCount - dupCount;
+
+    document.getElementById("dupSummaryText").innerHTML =
+      `ไฟล์ที่เลือกมีข้อมูลทั้งหมด <strong>${totalCount} รายการ</strong> (เป็นรายการไม่ซ้ำ <strong>${uniqueCount} รายการ</strong> และพบป้ายทะเบียนซ้ำ <strong>${dupCount} รายการ</strong>)<br>` +
       `คุณต้องการยืนยันนำเข้าทั้งหมด 100% (รวมรายการที่ขอซ้ำ/ทำใหม่ด้วย) หรือนำเข้าเฉพาะรายการที่ไม่ซ้ำครับ?`;
 
-    document.getElementById("btnUniqueCount").innerText = `${uniqueCount} รายการ`; document.getElementById("btnAllCount").innerText = `${totalCount} รายการ`;
+    document.getElementById("btnUniqueCount").innerText = `${uniqueCount} รายการ`;
+    document.getElementById("btnAllCount").innerText = `${totalCount} รายการ`;
 
     const listContainer = document.getElementById("dupListContainer");
     listContainer.innerHTML = duplicateDetails.map((d, idx) => `
       <div class="dup-item">
-        <strong>${idx + 1}. แถวที่ ${d.excelRow}: ทะเบียน <span style="color:#003366;">${d.plate}</span></strong> —${d.ownerName} (${d.dept}) [แจ้งเมื่อ: ${d.reqDate}]
+        <strong>${idx + 1}. แถวที่ ${d.excelRow}: ทะเบียน <span style="color:#003366;">${d.plate}</span></strong> — ${d.ownerName} (${d.dept}) [แจ้งเมื่อ: ${d.reqDate}]
         <div style="color:#b45309; font-size:0.78rem; margin-top:2px;">↳ ${d.prevInfo}</div>
       </div>
     `).join("");
@@ -1237,7 +1538,8 @@
     alert(
       `✅ นำเข้าข้อมูลสำเร็จ!\n` +
       `• นำเข้าสำเร็จ: ${addedCount} รายการ\n` +
-      `• ข้ามรายการซ้ำ: ${skippedCount} รายการ\n` + `• รวมข้อมูลในระบบทั้งหมด: ${dbRecords.length} รายการ`
+      `• ข้ามรายการซ้ำ: ${skippedCount} รายการ\n` +
+      `• รวมข้อมูลในระบบทั้งหมด: ${dbRecords.length} รายการ`
     );
   }
 
@@ -1338,4 +1640,288 @@
           <td><strong style="color:var(--primary); font-size:0.94rem;">${r.plate}</strong>${repeatBadge}</td>
           <td>${r.province}</td>
           <td>${r.ownerName}</td>
-          <td><span class="color-dot" style="background:${grpObj.color};"></span>${r
+          <td><span class="color-dot" style="background:${grpObj.color};"></span>${r.empType}</td>
+          <td>${r.dept}</td>
+          <td>${r.vehicleType} ${r.brand} ${r.color}</td>
+          <td style="color:#64748b; font-size:0.78rem;">${r.note || "-"}</td>
+          <td>${statusBadge}</td>
+          ${actionTd}
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function toggleRowSelection(id, checked) {
+    if (!isAdminUser()) return;
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    renderDatabaseTable();
+  }
+
+  function toggleSelectAll(checkbox) {
+    if (!isAdminUser()) return;
+    const filtered = getFilteredRecords();
+    if (checkbox.checked) {
+      filtered.forEach(r => selectedIds.add(r.id));
+    } else {
+      filtered.forEach(r => selectedIds.delete(r.id));
+    }
+    renderDatabaseTable();
+  }
+
+  function selectNextUnprinted8() {
+    if (!isAdminUser()) return;
+    selectedIds.clear();
+    const unprinted = getFilteredRecords()
+      .filter(r => !r.printed)
+      .sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0))
+      .slice(0, MAX_SLOTS);
+
+    if (unprinted.length === 0) {
+      alert("ไม่มีรายการที่ยังไม่ได้พิมพ์ในตัวกรองปัจจุบัน");
+      return;
+    }
+    unprinted.forEach(r => selectedIds.add(r.id));
+    renderDatabaseTable();
+  }
+
+  async function toggleSinglePrintStatus(id) {
+    if (!isAdminUser()) return;
+    const rec = dbRecords.find(r => r.id === id);
+    if (rec) {
+      rec.printed = !rec.printed;
+      await saveDatabase();
+      renderDatabaseTable();
+    }
+  }
+
+  function sendSelectedToPrint() {
+    if (!isAdminUser()) return;
+    if (selectedIds.size === 0) {
+      alert("กรุณาติ๊กเลือกรายการอย่างน้อย 1 คันก่อนครับ");
+      return;
+    }
+    const chosen = dbRecords
+      .filter(r => selectedIds.has(r.id))
+      .sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0))
+      .slice(0, MAX_SLOTS);
+
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      if (chosen[i]) {
+        printSlots[i] = {
+          id: chosen[i].id,
+          seq: chosen[i].seq,
+          plate: chosen[i].plate,
+          subText: formatSubTextForSticker(chosen[i].empType, chosen[i].dept),
+          groupId: chosen[i].groupId || resolveGroupIdByEmpType(chosen[i].empType)
+        };
+      } else {
+        printSlots[i] = { id: null, seq: "", plate: "", subText: "", groupId: "staff_bhh" };
+      }
+    }
+    renderSlotInputs();
+    renderStickerSheet();
+    switchTab("print");
+  }
+
+  function addSingleRecordToPrint(id) {
+    if (!isAdminUser()) return;
+    const rec = dbRecords.find(r => r.id === id);
+    if (!rec) return;
+    let emptyIdx = printSlots.findIndex(s => !s.plate);
+    if (emptyIdx === -1) emptyIdx = 0;
+
+    printSlots[emptyIdx] = {
+      id: rec.id,
+      seq: rec.seq,
+      plate: rec.plate,
+      subText: formatSubTextForSticker(rec.empType, rec.dept),
+      groupId: rec.groupId || resolveGroupIdByEmpType(rec.empType)
+    };
+    renderSlotInputs();
+    renderStickerSheet();
+    alert(`เพิ่มทะเบียน ${rec.plate} ลงในช่องพิมพ์สติกเกอร์ดวงที่ ${emptyIdx + 1} แล้ว`);
+  }
+
+  function getBhhPatternSvg() {
+    return `
+      <svg class="bhh-svg-pattern" viewBox="0 0 237 300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="237" height="300" fill="#ffffff"/>
+        <path d="M 6,6 H 38 A 9.5,9.5 0 0,1 38,25 H 6 Z" fill="#b21f2a"/>
+        <path d="M 6,25 H 39 A 9.5,9.5 0 0,1 39,44 H 6 Z" fill="#1e376d"/>
+        <polygon points="15,18 6,25 15,25" fill="#6e252b"/>
+        <rect x="15" y="10" width="9" height="29" rx="1.5" fill="#ffffff"/>
+        <rect x="6" y="20" width="28" height="9" rx="1.5" fill="#ffffff"/>
+
+        <text x="53" y="21" font-family="'Montserrat', 'Prompt', sans-serif" font-weight="800" font-size="19.5" fill="#1e376d" letter-spacing="0.6">BANGKOK</text>
+        <text x="53" y="38" font-family="'Montserrat', 'Prompt', sans-serif" font-weight="800" font-size="19.5" fill="#1e376d" letter-spacing="0.6">HOSPITAL</text>
+        <text x="54" y="49" font-family="'Montserrat', 'Prompt', sans-serif" font-weight="600" font-size="9.5" fill="#64748b" letter-spacing="2.8">HAT YAI</text>
+
+        <path d="M 4,56 H 174 A 56,56 0 0,1 230,112 A 56,56 0 0,1 174,168 H 4 Z" fill="#b21f2a"/>
+        <path d="M 4,168 H 174 A 55.5,55.5 0 0,1 230,223.5 A 55.5,55.5 0 0,1 174,279 H 4 Z" fill="#1e376d"/>
+        <polygon points="62,85 4,141 62,141" fill="#6e252b"/>
+
+        <rect x="62" y="85" width="54" height="165" rx="8" fill="#ffffff"/>
+        <rect x="3" y="141" width="172" height="53" rx="8" fill="#ffffff"/>
+      </svg>
+    `;
+  }
+
+  function renderSlotInputs() {
+    const container = document.getElementById("slotInputsContainer");
+    if (!container) return;
+    container.innerHTML = printSlots.map((slot, i) => `
+      <div class="slot-row">
+        <div class="slot-num">${i + 1}</div>
+        <input type="text" value="${slot.plate}" placeholder="ทะเบียน (เช่น 4กต5809)" oninput="updateSlot(${i}, 'plate', this.value)">
+        <input type="text" value="${slot.subText}" placeholder="แผนก (เช่น Emergency)" oninput="updateSlot(${i}, 'subText', this.value)">
+        <select onchange="updateSlot(${i}, 'groupId', this.value)">
+          ${colorGroups.map(g => `<option value="${g.groupId}" ${g.groupId === slot.groupId ? 'selected' : ''}>${g.label}</option>`).join("")}
+        </select>
+        <button class="btn btn-danger" style="padding:5px 0;" onclick="clearSingleSlot(${i})" title="ล้างช่องนี้">×</button>
+      </div>
+    `).join("");
+    updateQueueBadge();
+  }
+
+  function updateSlot(index, field, value) {
+    if (!isAdminUser()) return;
+    printSlots[index][field] = value;
+    renderStickerSheet();
+    updateQueueBadge();
+  }
+
+  function clearSingleSlot(index) {
+    if (!isAdminUser()) return;
+    printSlots[index] = { id: null, seq: "", plate: "", subText: "", groupId: "staff_bhh" };
+    renderSlotInputs();
+    renderStickerSheet();
+  }
+
+  function updateQueueBadge() {
+    const activeCount = printSlots.filter(s => s.plate.trim() !== "").length;
+    const badge = document.getElementById("queueCountBadge");
+    if (badge) badge.innerText = activeCount;
+  }
+
+  function renderStickerSheet() {
+    const grid = document.getElementById("stickerGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+    const baseDeptScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dept-scale')) || 8.6;
+
+    printSlots.forEach((slot) => {
+      const grpObj = getGroupObj(slot.groupId);
+      const frameColor = grpObj.color;
+      const hasPlate = slot.plate.trim() !== "";
+
+      const item = document.createElement("div");
+      item.className = "sticker-item";
+      item.style.setProperty("--frame-color", frameColor);
+
+      if (!hasPlate) item.style.opacity = "0.18";
+
+      const plateLen = slot.plate.trim().length;
+      const plateFontSize = plateLen > 9 ? "11.5pt" : (plateLen > 7 ? "12.8pt" : "14pt");
+
+      const subLen = (slot.subText || "").trim().length;
+      const deptFontSize = subLen > 18 ? (baseDeptScale - 1.4) + "pt" : (subLen > 13 ? (baseDeptScale - 0.7) + "pt" : baseDeptScale + "pt");
+
+      item.innerHTML = `
+        <div class="sticker-inner-white">
+          ${getBhhPatternSvg()}
+          <div class="cross-text-overlay">
+            <div class="plate-label" style="font-size:${plateFontSize};">${slot.plate || ""}</div>
+            <div class="dept-label" style="font-size:${deptFontSize};">${slot.subText || ""}</div>
+          </div>
+        </div>
+      `;
+      grid.appendChild(item);
+    });
+  }
+
+  async function markCurrentQueueAsPrinted() {
+    if (!isAdminUser()) return;
+    let count = 0;
+    printSlots.forEach(slot => {
+      if (slot.id) {
+        const rec = dbRecords.find(r => r.id === slot.id);
+        if (rec) {
+          rec.printed = true;
+          rec.note = `พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH')} (${currentUser ? currentUser.username : ''})`;
+          count++;
+        }
+      }
+    });
+    await saveDatabase();
+    renderDatabaseTable();
+    alert(`✅ อัปเดตสถานะเป็น "พิมพ์แล้ว" จำนวน ${count} คันขึ้น Cloud เรียบร้อยครับ`);
+  }
+
+  function exportSheetAsImage() {
+    if (!isAdminUser()) return;
+    const sheet = document.getElementById("printableSheet");
+    html2canvas(sheet, { scale: 3, useCORS: true }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = `BHH_Stickers_8pcs_${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+  }
+
+  function exportDatabaseToExcel() {
+    if (!isAdminUser()) return;
+    if (dbRecords.length === 0) {
+      alert("ยังไม่มีข้อมูลในระบบให้ส่งออก");
+      return;
+    }
+    const sorted = [...dbRecords].sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0));
+    const exportData = sorted.map(r => ({
+      "ลำดับ": r.seq,
+      "วันที่แจ้งขอทำสติกเกอร์": r.reqDate,
+      "ชื่อ-นามสกุล เจ้าของรถ": r.ownerName,
+      "ประเภทบุคลากร": r.empType,
+      "ชื่อหน่วยงาน": r.dept,
+      "ประเภทรถ": r.vehicleType,
+      "ยี่ห้อรถ": r.brand,
+      "รุ่นของรถ": r.model,
+      "สีของรถ": r.color,
+      "เลขทะเบียนรถ": r.plate,
+      "ป้ายจังหวัด": r.province,
+      "สถานะการพิมพ์": r.printed ? "พิมพ์แล้ว" : "ยังไม่พิมพ์",
+      "หมายเหตุ": r.note
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ฐานข้อมูลสติกเกอร์รถ");
+    XLSX.writeFile(wb, `BHH_Car_Sticker_DB_${Date.now()}.xlsx`);
+  }
+
+  function downloadJsonBackup() {
+    if (!isAdminUser()) return;
+    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), colorGroups, users: appUsers, records: dbRecords }, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `BHH_Sticker_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    link.click();
+  }
+
+  async function clearDatabase() {
+    if (!isAdminUser()) {
+      alert("เฉพาะ Admin เท่านั้นที่สามารถล้างฐานข้อมูลทั้งหมดได้");
+      return;
+    }
+    if (!confirm("⚠️ ยืนยันการล้างข้อมูลรถยนต์ทั้งหมดในระบบออนไลน์?")) return;
+    dbRecords = [];
+    selectedIds.clear();
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+  }
+
+  window.onload = initSystem;
+</script>
+</body>
+</html>
