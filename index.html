@@ -44,9 +44,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ===================================================================== */
     /* หน้าจอเข้าสู่ระบบ (Login Screen) */
-    /* ===================================================================== */
     #loginScreen {
       min-height: 100vh;
       display: flex;
@@ -93,9 +91,7 @@
       box-shadow: 0 0 0 3px rgba(2,132,199,0.15);
     }
 
-    /* ===================================================================== */
     /* หน้าจอหลักของระบบ (Main App) */
-    /* ===================================================================== */
     #mainApp { display: none; }
 
     .top-navbar {
@@ -197,7 +193,7 @@
 
     /* ตารางฐานข้อมูล */
     .table-container {
-      max-height: 54vh;
+      max-height: 62vh;
       overflow: auto;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
@@ -221,7 +217,6 @@
       border-radius: 99px;
       font-size: 0.74rem;
       font-weight: 700;
-      cursor: pointer;
     }
     .status-printed { background: #dcfce7; color: #166534; }
     .status-pending { background: #fef3c7; color: #92400e; }
@@ -384,19 +379,18 @@
       <div class="login-header">
         <div style="font-size:2.4rem;">🏥</div>
         <h2>BHH Car Sticker Online</h2>
-        <p>ระบบฐานข้อมูลและพิมพ์สติกเกอร์รถยนต์ โรงพยาบาลกรุงเทพหาดใหญ่</p>
+        <p>ระบบฐานข้อมูลและตรวจสอบสติกเกอร์รถยนต์ โรงพยาบาลกรุงเทพหาดใหญ่</p>
       </div>
 
       <div class="form-group">
         <label>👤 ชื่อผู้ใช้งาน (User ID)</label>
-        <input type="text" id="loginUsername" placeholder="กรอก ID ผู้ใช้งาน (ค่าเริ่มต้น: admin)" autocomplete="username">
+        <input type="text" id="loginUsername" placeholder="กรอก ID ผู้ใช้งาน" autocomplete="username">
       </div>
       <div class="form-group">
         <label>🔑 รหัสผ่าน (Password)</label>
-        <input type="password" id="loginPassword" placeholder="กรอกรหัสผ่าน (ค่าเริ่มต้น: bhh1234)" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
+        <input type="password" id="loginPassword" placeholder="กรอกรหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
       </div>
 
-      <!-- ตั้งค่าลิงก์ Firebase Cloud (เชื่อมให้แล้วอัตโนมัติ) -->
       <div style="margin-bottom:18px; background:#f0fdf4; padding:10px 12px; border-radius:8px; border:1px solid #bbf7d0;">
         <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleCloudConfig()">
           <span style="font-size:0.8rem; font-weight:700; color:#166534;">✅ เชื่อมต่อ Firebase Cloud (bhh-car-sticker) แล้ว</span>
@@ -425,12 +419,13 @@
       </div>
 
       <div class="nav-tabs">
-        <button class="tab-btn active" id="tabDbBtn" onclick="switchTab('db')">📂 1. ฐานข้อมูล / ค้นหา (<span id="totalCountBadge">0</span>)</button>
-        <button class="tab-btn" id="tabPrintBtn" onclick="switchTab('print')">🖨️ 2. หน้าสั่งพิมพ์ (8 ดวง) [<span id="queueCountBadge">0</span>/8]</button>
+        <button class="tab-btn active" id="tabDbBtn" onclick="switchTab('db')">📂 1. ฐานข้อมูล / ตรวจสอบข้อมูล (<span id="totalCountBadge">0</span>)</button>
+        <!-- แท็บที่ 2 และ 3 แสดงเฉพาะ Admin เท่านั้น -->
+        <button class="tab-btn" id="tabPrintBtn" onclick="switchTab('print')" style="display:none;">🖨️ 2. หน้าสั่งพิมพ์ (8 ดวง) [<span id="queueCountBadge">0</span>/8]</button>
         <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin')" style="display:none;">👥 3. จัดการผู้ใช้งาน & ตั้งค่า (Admin)</button>
 
         <div class="user-info-pill">
-          <span id="currentUserDisplay">👤 admin (Admin)</span>
+          <span id="currentUserDisplay">👤 ผู้ใช้งาน</span>
           <button class="btn" style="padding:4px 8px; font-size:0.74rem; background:#0284c7; color:#fff;" onclick="syncFromCloud(true)" title="ดึงข้อมูลล่าสุดจาก Cloud">🔄 ซิงค์ข้อมูล</button>
           <button class="btn btn-danger" style="padding:4px 8px; font-size:0.74rem;" onclick="handleLogout()">ออกจากระบบ</button>
         </div>
@@ -438,20 +433,26 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- แท็บที่ 1: ฐานข้อมูล + เพิ่มข้อมูล + ค้นหาย้อนหลัง -->
+    <!-- แท็บที่ 1: ฐานข้อมูล + ค้นหาย้อนหลัง (สำหรับ Admin และ User ทั่วไป) -->
     <!-- =================================================================== -->
     <div class="page-view active" id="dbView">
 
-      <!-- กล่องจัดการไฟล์ Excel & สีกรอบ -->
-      <div class="card">
+      <!-- ป้ายแจ้งสถานะโหมดดูอย่างเดียว (แสดงเฉพาะ User ทั่วไป) -->
+      <div id="viewerNoticeBanner" class="card" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; border-left:5px solid #0284c7; padding:12px 16px;">
+        <strong style="color:#0369a1; font-size:0.95rem;">🔎 โหมดตรวจสอบข้อมูล (สำหรับผู้ใช้งานทั่วไป - View Only)</strong>
+        <span style="font-size:0.85rem; color:#334155; margin-left:8px;">คุณสามารถค้นหาป้ายทะเบียน ชื่อเจ้าของรถ และกรองดูข้อมูลแยกตามแผนกได้ (การแก้ไขข้อมูลและพิมพ์สติกเกอร์สงวนสิทธิ์เฉพาะ Admin)</span>
+      </div>
+
+      <!-- กล่องจัดการไฟล์ Excel & สีกรอบ (แสดงเฉพาะ Admin) -->
+      <div class="card" id="adminManageDbCard" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
           <div>
-            <strong style="font-size:1rem; color:var(--primary);">📊 จัดการฐานข้อมูลออนไลน์ (Import / Export / สำรองข้อมูลระยะยาว)</strong>
-            <span style="font-size:0.82rem; color:#64748b; margin-left:8px;">ซิงค์ข้อมูลขึ้น Cloud อัตโนมัติทุกครั้งที่แก้ไข</span>
+            <strong style="font-size:1rem; color:var(--primary);">📊 จัดการฐานข้อมูลออนไลน์ (เฉพาะ Admin)</strong>
+            <span style="font-size:0.82rem; color:#166534; margin-left:8px; font-weight:600;">* การ Import ไฟล์ใหม่จะนำข้อมูลไปต่อท้ายข้อมูลเดิมโดยไม่ลบของเก่า</span>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onclick="this.value=null" onchange="importExcelFile(event)">
-            <button class="btn btn-primary" onclick="triggerExcelImport()">📥 Import ไฟล์ Excel ขึ้นระบบออนไลน์</button>
+            <button class="btn btn-primary" onclick="triggerExcelImport()">📥 Import ไฟล์ Excel (เพิ่มต่อท้ายข้อมูลเดิม)</button>
             <button class="btn btn-success" onclick="exportDatabaseToExcel()">📤 Export เป็น Excel (.xlsx)</button>
             <button class="btn btn-outline" onclick="downloadJsonBackup()">💾 สำรองฐานข้อมูล (.json)</button>
             <button class="btn btn-danger" id="btnClearAllDb" onclick="clearDatabase()">🗑️ ล้างฐานข้อมูลทั้งหมด</button>
@@ -466,10 +467,10 @@
         </div>
       </div>
 
-      <!-- กล่องเพิ่มข้อมูลรถคันใหม่ -->
-      <div class="card" style="border-left: 5px solid #00b050;">
+      <!-- กล่องเพิ่มข้อมูลรถคันใหม่ (แสดงเฉพาะ Admin) -->
+      <div class="card" id="adminAddRecordCard" style="border-left: 5px solid #00b050; display:none;">
         <div style="margin-bottom:10px;">
-          <strong style="font-size:0.98rem; color:#008037;">➕ เพิ่มข้อมูลรถคันใหม่ลงฐานข้อมูลออนไลน์ (พิมพ์กรอกเอง)</strong>
+          <strong style="font-size:0.98rem; color:#008037;">➕ เพิ่มข้อมูลรถคันใหม่ลงฐานข้อมูลออนไลน์ (เฉพาะ Admin)</strong>
         </div>
         <div class="toolbar-grid" style="grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));">
           <div>
@@ -518,7 +519,7 @@
         </div>
       </div>
 
-      <!-- กล่องค้นหาและกรองข้อมูล -->
+      <!-- กล่องค้นหาและกรองข้อมูล (ใช้ได้ทั้ง Admin และ User ทั่วไป) -->
       <div class="card">
         <div class="toolbar-grid">
           <div>
@@ -546,7 +547,7 @@
             </select>
           </div>
           <div>
-            <label>🖨️ สถานะการพิมพ์</label>
+            <label>🖨️ สถานะสติกเกอร์</label>
             <select id="filterPrintStatus" onchange="renderDatabaseTable()">
               <option value="">-- ทั้งหมด --</option>
               <option value="pending">ยังไม่ได้พิมพ์</option>
@@ -557,9 +558,11 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding-top:10px; border-top:1px solid #e2e8f0;">
           <div style="font-size:0.86rem; color:#475569;">
-            พบข้อมูล <strong id="filteredCountText">0</strong> รายการ | เลือกไว้ <strong id="selectedCountText" style="color:var(--primary);">0</strong> รายการ
+            พบข้อมูล <strong id="filteredCountText">0</strong> รายการ
+            <span id="selectedCountWrapper" style="display:none;"> | เลือกไว้ <strong id="selectedCountText" style="color:var(--primary);">0</strong> รายการ</span>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <!-- ปุ่มจัดการกลุ่มข้อมูล แสดงเฉพาะ Admin -->
+          <div id="adminBulkActionBtns" style="display:none; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-danger" onclick="deleteSelectedRecords()">🗑️ ลบรายการที่เลือก (<span id="deleteBtnCount">0</span>)</button>
             <button class="btn btn-outline" onclick="selectNextUnprinted8()">⚡ เลือกคิวถัดไปที่ยังไม่พิมพ์ (8 คัน)</button>
             <button class="btn btn-primary" onclick="sendSelectedToPrint()">➡️ ส่งรายการที่เลือกไปหน้าพิมพ์สติกเกอร์ (สูงสุด 8 ดวง)</button>
@@ -573,7 +576,7 @@
           <table>
             <thead>
               <tr>
-                <th style="width:34px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"></th>
+                <th id="thCheckboxCol" style="width:34px; display:none;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"></th>
                 <th>ลำดับ</th>
                 <th>วันที่แจ้ง</th>
                 <th>ป้ายทะเบียน</th>
@@ -583,8 +586,8 @@
                 <th>ชื่อหน่วยงาน (แผนก)</th>
                 <th>ประเภทรถ / ยี่ห้อ / สี</th>
                 <th>หมายเหตุ</th>
-                <th>สถานะ</th>
-                <th style="width:140px;">จัดการ</th>
+                <th>สถานะสติกเกอร์</th>
+                <th id="thActionCol" style="width:140px; display:none;">จัดการ</th>
               </tr>
             </thead>
             <tbody id="dbTableBody"></tbody>
@@ -594,7 +597,7 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- แท็บที่ 2: หน้าสั่งพิมพ์สติกเกอร์ 8 ดวง (5.3 x 6.0 cm) -->
+    <!-- แท็บที่ 2: หน้าสั่งพิมพ์สติกเกอร์ 8 ดวง (เฉพาะ Admin เท่านั้น) -->
     <!-- =================================================================== -->
     <div class="page-view" id="printView">
       <div class="print-workspace">
@@ -653,7 +656,7 @@
           <h3 style="margin-top:0; color:var(--primary); font-family:'Prompt',sans-serif;">➕ สร้างบัญชีผู้ใช้งานใหม่ (สำหรับ Admin)</h3>
           <div class="form-group">
             <label>ชื่อผู้ใช้งาน (User ID สำหรับล็อกอิน) *</label>
-            <input type="text" id="newUserId" placeholder="เช่น staff01 หรือ bhh_guard">
+            <input type="text" id="newUserId" placeholder="เช่น guard01 หรือ staff_check">
           </div>
           <div class="form-group">
             <label>รหัสผ่าน (Password) *</label>
@@ -661,13 +664,13 @@
           </div>
           <div class="form-group">
             <label>ชื่อ-นามสกุล / แผนกของผู้ใช้ *</label>
-            <input type="text" id="newUserName" placeholder="เช่น เจ้าหน้าที่อาคารสถานที่">
+            <input type="text" id="newUserName" placeholder="เช่น รปภ. ตรวจสอบทะเบียนรถ">
           </div>
           <div class="form-group">
             <label>ระดับสิทธิ์การใช้งาน (Role)</label>
             <select id="newUserRole">
-              <option value="staff">Staff (ผู้ใช้งานทั่วไป - พิมพ์และจัดการสติกเกอร์)</option>
-              <option value="admin">Admin (ผู้ดูแลระบบ - สร้างรหัสผ่านและจัดการทุกส่วนได้)</option>
+              <option value="staff">User ทั่วไป (ดูและค้นหาเพื่อตรวจเช็คอย่างเดียว - พิมพ์/แก้ไขไม่ได้)</option>
+              <option value="admin">Admin (ผู้ดูแลระบบ - ทำได้ทุกอย่างและพิมพ์สติกเกอร์ได้)</option>
             </select>
           </div>
           <button class="btn btn-success" style="width:100%; padding:10px;" onclick="createOrUpdateUser()">
@@ -690,7 +693,7 @@
         <div class="card">
           <h3 style="margin-top:0; color:var(--primary); font-family:'Prompt',sans-serif;">👥 รายชื่อผู้ใช้งานในระบบทั้งหมด</h3>
           <p style="font-size:0.82rem; color:#64748b; margin-top:-6px;">
-            แอดมินสามารถดูรหัสผ่าน แก้ไขรหัสผ่าน หรือลบบัญชีผู้ใช้งานได้จากตารางนี้
+            แอดมินสามารถดูรหัสผ่าน แก้ไขรหัสผ่าน หรือเปลี่ยนสิทธิ์ผู้ใช้งานได้จากตารางนี้
           </p>
           <div class="table-container">
             <table>
@@ -714,9 +717,6 @@
   </div>
 
 <script>
-  // =========================================================================
-  // ลิงก์ Firebase Realtime Database ของระบบสติกเกอร์ BHH (ฝังถาวรเรียบร้อย)
-  // =========================================================================
   const DEFAULT_FIREBASE_URL = "https://bhh-car-sticker-default-rtdb.asia-southeast1.firebasedatabase.app";
 
   const BHH_COLOR_GROUPS = [
@@ -727,7 +727,6 @@
     { groupId: "hec",       label: "HEC (สีเขียว)",                           color: "#00b050", matchTypes: ["hec"] }
   ];
 
-  // บัญชีแอดมินเริ่มต้น
   const DEFAULT_USERS = [
     { username: "admin", password: "bhh1234", displayName: "ผู้ดูแลระบบหลัก (Engineering Manager)", role: "admin" }
   ];
@@ -740,6 +739,11 @@
   let selectedIds = new Set();
   let printSlots = [];
   let colorGroups = [];
+
+  // ฟังก์ชันตรวจสอบว่าเป็น Admin หรือไม่
+  function isAdminUser() {
+    return currentUser && currentUser.role === "admin";
+  }
 
   function showLoading(msg) {
     document.getElementById("loadingText").innerText = msg || "กำลังประมวลผล...";
@@ -755,9 +759,6 @@
     box.style.display = box.style.display === "none" ? "block" : "none";
   }
 
-  // =========================================================================
-  // 1. เริ่มต้นระบบและโหลดค่าจาก Firebase Cloud ทันที
-  // =========================================================================
   async function initSystem() {
     const savedCustomUrl = localStorage.getItem("bhh_firebase_url");
     firebaseBaseUrl = (savedCustomUrl || DEFAULT_FIREBASE_URL).trim().replace(/\/+$/, "");
@@ -785,13 +786,11 @@
       dbRecords = [];
     }
 
-    // ดึงข้อมูลล่าสุดจาก Firebase Cloud ทันทีที่เปิดหน้าเว็บ
     if (firebaseBaseUrl) {
       await syncFromCloud(false);
     }
     updateCloudBadge();
 
-    // ตั้งค่าตัวอย่างสติกเกอร์เริ่มต้น
     const defaultExamples = [
       { plate: "4กต5809", subText: "Emergency", groupId: "staff_bhh" },
       { plate: "ขค 2951", subText: "Heart Clinic", groupId: "doc_pt" },
@@ -817,9 +816,6 @@
     }
   }
 
-  // =========================================================================
-  // 2. ระบบซิงค์ฐานข้อมูลออนไลน์ (Firebase REST API)
-  // =========================================================================
   function updateCloudBadge() {
     const badge = document.getElementById("cloudStatusBadge");
     if (firebaseBaseUrl) {
@@ -841,9 +837,9 @@
 
       if (data) {
         if (Array.isArray(data.records)) {
-          dbRecords = data.records;
+          dbRecords = data.records.filter(Boolean);
         } else if (data.records && typeof data.records === "object") {
-          dbRecords = Object.values(data.records);
+          dbRecords = Object.values(data.records).filter(Boolean);
         } else {
           dbRecords = [];
         }
@@ -858,8 +854,7 @@
         localStorage.setItem("bhh_car_database", JSON.stringify(dbRecords));
         localStorage.setItem("bhh_app_users", JSON.stringify(appUsers));
         localStorage.setItem("bhh_color_groups_v4", JSON.stringify(colorGroups));
-      } else {
-        // กรณีเพิ่งสร้าง Firebase ใหม่และยังไม่มีก้อนข้อมูล ให้ส่งข้อมูลเริ่มต้นขึ้นไปสร้างอัตโนมัติ
+      } else if (isAdminUser()) {
         await saveDatabase();
       }
 
@@ -872,11 +867,16 @@
     } catch (err) {
       hideLoading();
       console.error("Cloud sync error:", err);
-      if (showAlert) alert("❌ ไม่สามารถเชื่อมต่อ Firebase ได้ กรุณาตรวจสอบว่าตั้งค่า Rules ใน Firebase เป็น .read: true, .write: true แล้วหรือยังครับ");
+      if (showAlert) alert("❌ ไม่สามารถเชื่อมต่อ Firebase ได้ กรุณาตรวจสอบการตั้งค่า Rules ใน Firebase");
     }
   }
 
   async function saveDatabase() {
+    if (!isAdminUser()) {
+      alert("⛔ เฉพาะผู้ดูแลระบบ (Admin) เท่านั้นที่มีสิทธิ์บันทึกหรือแก้ไขข้อมูล");
+      return;
+    }
+
     try {
       localStorage.setItem("bhh_car_database", JSON.stringify(dbRecords));
       localStorage.setItem("bhh_app_users", JSON.stringify(appUsers));
@@ -892,7 +892,7 @@
       try {
         const payload = {
           updatedAt: new Date().toISOString(),
-          updatedBy: currentUser ? currentUser.username : "system",
+          updatedBy: currentUser ? currentUser.username : "admin",
           colorGroups: colorGroups,
           users: appUsers,
           records: dbRecords
@@ -905,14 +905,11 @@
         if (!res.ok) throw new Error("HTTP " + res.status);
       } catch (err) {
         console.error("Cloud push failed:", err);
-        alert("⚠️ ไม่สามารถบันทึกขึ้น Firebase Cloud ได้ กรุณาตรวจสอบว่ากด Publish ในหน้า Rules ของ Firebase แล้วหรือยังครับ");
+        alert("⚠️ ไม่สามารถบันทึกขึ้น Firebase Cloud ได้ กรุณาตรวจสอบ Rules ของ Firebase");
       }
     }
   }
 
-  // =========================================================================
-  // 3. ระบบล็อกอิน และจัดการผู้ใช้งาน (Admin & Staff Authentication)
-  // =========================================================================
   async function handleLogin() {
     const inputUrl = document.getElementById("firebaseUrlInput").value.trim().replace(/\/+$/, "");
     if (inputUrl && inputUrl !== firebaseBaseUrl) {
@@ -940,34 +937,55 @@
     enterMainApp();
   }
 
+  // ตั้งค่าหน้าจอแยกตามสิทธิ์ Admin vs User ทั่วไป (View Only)
   function enterMainApp() {
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("mainApp").style.display = "block";
-    document.getElementById("currentUserDisplay").innerText = `👤 ${currentUser.displayName} (${currentUser.role.toUpperCase()})`;
 
-    const isAdmin = currentUser.role === "admin";
+    const isAdmin = isAdminUser();
+    const roleLabel = isAdmin ? "ADMIN - จัดการระบบและพิมพ์สติกเกอร์" : "USER - ตรวจสอบข้อมูลอย่างเดียว";
+    document.getElementById("currentUserDisplay").innerText = `👤 ${currentUser.displayName} (${roleLabel})`;
+
+    // 1. ซ่อน/แสดง แท็บเมนูด้านบน (User ทั่วไปเห็นเฉพาะแท็บที่ 1)
+    document.getElementById("tabPrintBtn").style.display = isAdmin ? "inline-block" : "none";
     document.getElementById("tabAdminBtn").style.display = isAdmin ? "inline-block" : "none";
-    document.getElementById("btnClearAllDb").style.display = isAdmin ? "inline-flex" : "none";
+
+    // 2. ซ่อน/แสดง กล่องเครื่องมือของ Admin ในแท็บที่ 1
+    document.getElementById("viewerNoticeBanner").style.display = isAdmin ? "none" : "block";
+    document.getElementById("adminManageDbCard").style.display = isAdmin ? "block" : "none";
+    document.getElementById("adminAddRecordCard").style.display = isAdmin ? "block" : "none";
+    document.getElementById("adminBulkActionBtns").style.display = isAdmin ? "flex" : "none";
+    document.getElementById("selectedCountWrapper").style.display = isAdmin ? "inline" : "none";
+
+    // 3. ซ่อน/แสดง คอลัมน์ Checkbox และคอลัมน์จัดการในหัวตาราง
+    document.getElementById("thCheckboxCol").style.display = isAdmin ? "table-cell" : "none";
+    document.getElementById("thActionCol").style.display = isAdmin ? "table-cell" : "none";
+
+    // บังคับกลับมาที่หน้าตารางข้อมูลเสมอสำหรับ User ทั่วไป
+    switchTab("db");
 
     updateCloudBadge();
     renderColorConfigBar();
     populateFilterDropdowns();
     renderDatabaseTable();
-    renderSlotInputs();
-    renderStickerSheet();
-    renderUserTable();
+    if (isAdmin) {
+      renderSlotInputs();
+      renderStickerSheet();
+      renderUserTable();
+    }
   }
 
   function handleLogout() {
     sessionStorage.removeItem("bhh_logged_user");
     currentUser = null;
+    selectedIds.clear();
     document.getElementById("loginPassword").value = "";
     document.getElementById("mainApp").style.display = "none";
     document.getElementById("loginScreen").style.display = "flex";
   }
 
   async function createOrUpdateUser() {
-    if (!currentUser || currentUser.role !== "admin") return;
+    if (!isAdminUser()) return;
 
     const uid = document.getElementById("newUserId").value.trim();
     const pass = document.getElementById("newUserPass").value.trim();
@@ -982,7 +1000,7 @@
     const existingIdx = appUsers.findIndex(u => u.username.toLowerCase() === uid.toLowerCase());
     if (existingIdx >= 0) {
       appUsers[existingIdx] = { username: uid, password: pass, displayName: name, role: role };
-      alert(`อัปเดตข้อมูลและรหัสผ่านของ "${uid}" เรียบร้อยแล้ว!`);
+      alert(`อัปเดตข้อมูลและสิทธิ์ของ "${uid}" เรียบร้อยแล้ว!`);
     } else {
       appUsers.push({ username: uid, password: pass, displayName: name, role: role });
       alert(`สร้างบัญชีผู้ใช้งาน "${uid}" เรียบร้อยแล้ว!`);
@@ -997,6 +1015,7 @@
   }
 
   function editUserForm(username) {
+    if (!isAdminUser()) return;
     const u = appUsers.find(item => item.username === username);
     if (!u) return;
     document.getElementById("newUserId").value = u.username;
@@ -1006,6 +1025,7 @@
   }
 
   async function deleteUserAccount(username) {
+    if (!isAdminUser()) return;
     if (username.toLowerCase() === "admin") {
       alert("ไม่สามารถลบบัญชี admin หลักได้ (แต่สามารถแก้ไขรหัสผ่านได้ครับ)");
       return;
@@ -1027,7 +1047,7 @@
         <td>${u.displayName}</td>
         <td>
           <span class="badge-status ${u.role === 'admin' ? 'status-printed' : 'status-pending'}">
-            ${u.role.toUpperCase()}
+            ${u.role === 'admin' ? 'ADMIN (ทำได้ทุกอย่าง)' : 'USER (ดูข้อมูลอย่างเดียว)'}
           </span>
         </td>
         <td>
@@ -1039,6 +1059,7 @@
   }
 
   async function saveCloudUrlFromAdmin() {
+    if (!isAdminUser()) return;
     const url = document.getElementById("adminFirebaseUrl").value.trim().replace(/\/+$/, "");
     firebaseBaseUrl = url;
     localStorage.setItem("bhh_firebase_url", firebaseBaseUrl);
@@ -1051,10 +1072,13 @@
     }
   }
 
-  // =========================================================================
-  // 4. การสลับหน้าและจัดการข้อมูลสติกเกอร์
-  // =========================================================================
   function switchTab(tab) {
+    // ป้องกันไม่ให้ User ทั่วไปสลับไปหน้าสั่งพิมพ์หรือหน้า Admin โดยเด็ดขาด
+    if (!isAdminUser() && (tab === "print" || tab === "admin")) {
+      alert("⛔ สิทธิ์ผู้ใช้งานทั่วไปสามารถดูและค้นหาข้อมูลเพื่อตรวจสอบได้เท่านั้น ไม่สามารถพิมพ์สติกเกอร์ได้ครับ");
+      return;
+    }
+
     document.getElementById("dbView").classList.toggle("active", tab === "db");
     document.getElementById("printView").classList.toggle("active", tab === "print");
     document.getElementById("adminView").classList.toggle("active", tab === "admin");
@@ -1065,6 +1089,7 @@
   }
 
   function adjustTextPosition(type, val) {
+    if (!isAdminUser()) return;
     if (type === 'y') {
       document.documentElement.style.setProperty('--text-offset-y', val + '%');
       document.getElementById('posYVal').innerText = val + '%';
@@ -1099,6 +1124,7 @@
 
   function renderColorConfigBar() {
     const bar = document.getElementById("colorConfigBar");
+    if (!bar) return;
     bar.innerHTML = colorGroups.map((grp, idx) => `
       <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; background:#fff; padding:4px 9px; border-radius:6px; border:1px solid #cbd5e1; font-weight:600;">
         <input type="color" value="${grp.color}" onchange="updateGroupColor(${idx}, this.value)" style="width:26px; height:22px; padding:0; border:none; cursor:pointer;">
@@ -1108,6 +1134,7 @@
   }
 
   function updateGroupColor(index, newColor) {
+    if (!isAdminUser()) return;
     colorGroups[index].color = newColor;
     saveDatabase();
     renderDatabaseTable();
@@ -1115,6 +1142,8 @@
   }
 
   async function addManualRecord(sendToPrintImmediately) {
+    if (!isAdminUser()) return;
+
     const ownerName = document.getElementById("addOwner").value.trim();
     const empType = document.getElementById("addEmpType").value;
     const dept = document.getElementById("addDept").value.trim();
@@ -1145,11 +1174,11 @@
       color: "",
       plate: plate,
       province: province,
-      note: `เพิ่มโดย ${currentUser ? currentUser.username : 'staff'}`,
+      note: `เพิ่มโดย ${currentUser ? currentUser.username : 'admin'}`,
       printed: false
     };
 
-    dbRecords.unshift(newRec);
+    dbRecords.push(newRec);
     await saveDatabase();
     populateFilterDropdowns();
     renderDatabaseTable();
@@ -1167,6 +1196,7 @@
   }
 
   async function deleteSelectedRecords() {
+    if (!isAdminUser()) return;
     if (selectedIds.size === 0) {
       alert("กรุณาติ๊กถูกหน้ารายการที่ต้องการลบอย่างน้อย 1 รายการก่อนครับ");
       return;
@@ -1185,6 +1215,7 @@
   }
 
   async function deleteSingleRecord(id) {
+    if (!isAdminUser()) return;
     const rec = dbRecords.find(r => r.id === id);
     if (!rec) return;
     if (!confirm(`ต้องการลบข้อมูลทะเบียน "${rec.plate}" (${rec.ownerName}) ใช่หรือไม่?`)) return;
@@ -1198,6 +1229,7 @@
   }
 
   function triggerExcelImport() {
+    if (!isAdminUser()) return;
     if (typeof XLSX === "undefined") {
       alert("⚠️ ไม่สามารถโหลดไลบรารีอ่านไฟล์ Excel ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด Refresh (F5) ครับ");
       return;
@@ -1207,11 +1239,18 @@
     input.click();
   }
 
+  function makeRecordKey(plate, ownerName) {
+    const cleanPlate = String(plate || "").replace(/\s+/g, "").toLowerCase();
+    const cleanOwner = String(ownerName || "").replace(/\s+/g, "").toLowerCase();
+    return `${cleanPlate}|${cleanOwner}`;
+  }
+
   function importExcelFile(event) {
+    if (!isAdminUser()) return;
     const file = event.target.files && event.target.files[0];
     if (!file) return;
 
-    showLoading(`กำลังอ่านไฟล์ "${file.name}" และอัปโหลดขึ้น Cloud...`);
+    showLoading(`กำลังอ่านไฟล์ "${file.name}" เพื่อนำข้อมูลไปเพิ่มต่อท้าย...`);
 
     setTimeout(() => {
       const reader = new FileReader();
@@ -1240,7 +1279,15 @@
             return;
           }
 
-          const imported = [];
+          const isInitialImport = dbRecords.length === 0;
+          const existingKeys = new Set(dbRecords.map(r => makeRecordKey(r.plate, r.ownerName)));
+
+          let currentMaxSeq = dbRecords.length > 0
+            ? Math.max(...dbRecords.map(r => Number(r.seq) || 0))
+            : 0;
+
+          let addedCount = 0;
+          let skippedCount = 0;
           let emptyStreak = 0;
 
           for (let i = 1; i < rows.length; i++) {
@@ -1252,24 +1299,33 @@
             }
             emptyStreak = 0;
 
-            const seqNum = imported.length + 1;
-            const reqDate = formatExcelDateFast(r[1] || r[0]);
             const ownerName = String(r[2] || "").trim();
+            const plate = String(r[9] || "").trim();
+            const key = makeRecordKey(plate, ownerName);
+
+            if (existingKeys.has(key)) {
+              skippedCount++;
+              continue;
+            }
+
+            currentMaxSeq++;
+            const reqDate = formatExcelDateFast(r[1] || r[0]);
             const empType = String(r[3] || "พนักงานประจำ (Full Time)").trim() || "พนักงานประจำ (Full Time)";
             const dept = String(r[4] || "").trim();
             const vehicleType = String(r[5] || "").trim();
             const brand = String(r[6] || "").trim();
             const model = String(r[7] || "").trim();
             const color = String(r[8] || "").trim();
-            const plate = String(r[9] || "").trim();
             const province = String(r[10] || "").trim();
             const note = String(r[11] || "").trim();
 
-            const isAlreadyPrinted = seqNum <= 810 || note.toLowerCase().includes("print") || note.includes("ถึง");
+            const isAlreadyPrinted = (isInitialImport && rows.length > 800 && currentMaxSeq <= 810) ||
+                                     note.toLowerCase().includes("print") ||
+                                     note.includes("ถึง");
 
-            imported.push({
-              id: "row_" + seqNum + "_" + Date.now(),
-              seq: seqNum,
+            dbRecords.push({
+              id: "row_" + currentMaxSeq + "_" + Date.now() + "_" + addedCount,
+              seq: currentMaxSeq,
               reqDate,
               ownerName,
               empType,
@@ -1284,15 +1340,22 @@
               note,
               printed: isAlreadyPrinted
             });
+
+            existingKeys.add(key);
+            addedCount++;
           }
 
-          dbRecords = imported;
-          selectedIds.clear();
           await saveDatabase();
           populateFilterDropdowns();
           renderDatabaseTable();
           hideLoading();
-          alert(`✅ นำเข้าและซิงค์ข้อมูลออนไลน์สำเร็จทั้งหมด ${imported.length} รายการ!`);
+
+          alert(
+            `✅ นำเข้าข้อมูลเพิ่มต่อท้ายสำเร็จ!\n` +
+            `• เพิ่มรายการใหม่: ${addedCount} รายการ\n` +
+            `• ข้ามรายการที่มีอยู่แล้ว: ${skippedCount} รายการ\n` +
+            `• รวมข้อมูลในระบบทั้งหมด: ${dbRecords.length} รายการ`
+          );
         } catch (err) {
           hideLoading();
           alert("❌ ไม่สามารถนำเข้าไฟล์นี้ได้: " + err.message);
@@ -1326,7 +1389,7 @@
     empSelect.innerHTML = `<option value="">-- ทุกประเภทบุคลากร (${emps.length} กลุ่ม) --</option>` +
       emps.map(e => `<option value="${e}">${e}</option>`).join("");
 
-    datalist.innerHTML = depts.map(d => `<option value="${d}">`).join("");
+    if (datalist) datalist.innerHTML = depts.map(d => `<option value="${d}">`).join("");
     document.getElementById("totalCountBadge").innerText = dbRecords.length;
   }
 
@@ -1337,16 +1400,16 @@
     const vType = document.getElementById("filterVehicleType").value;
     const pStatus = document.getElementById("filterPrintStatus").value;
 
-    return dbRecords.filter(r => {
+    return [...dbRecords].sort((a, b) => (Number(b.seq) || 0) - (Number(a.seq) || 0)).filter(r => {
       if (dept && r.dept !== dept) return false;
       if (emp && r.empType !== emp) return false;
       if (vType && r.vehicleType !== vType) return false;
       if (pStatus === "printed" && !r.printed) return false;
       if (pStatus === "pending" && r.printed) return false;
       if (q) {
-        const matchPlate = r.plate.toLowerCase().includes(q);
-        const matchName = r.ownerName.toLowerCase().includes(q);
-        const matchDept = r.dept.toLowerCase().includes(q);
+        const matchPlate = String(r.plate || "").toLowerCase().includes(q);
+        const matchName = String(r.ownerName || "").toLowerCase().includes(q);
+        const matchDept = String(r.dept || "").toLowerCase().includes(q);
         const matchSeq = String(r.seq) === q;
         return matchPlate || matchName || matchDept || matchSeq;
       }
@@ -1357,12 +1420,15 @@
   function renderDatabaseTable() {
     const tbody = document.getElementById("dbTableBody");
     const filtered = getFilteredRecords();
+    const isAdmin = isAdminUser();
+
     document.getElementById("filteredCountText").innerText = filtered.length;
     document.getElementById("selectedCountText").innerText = selectedIds.size;
     document.getElementById("deleteBtnCount").innerText = selectedIds.size;
 
+    const colSpanCount = isAdmin ? 12 : 10;
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:24px; color:#64748b;">ยังไม่มีข้อมูล หรือไม่พบรายการที่ค้นหา</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${colSpanCount}" style="text-align:center; padding:24px; color:#64748b;">ยังไม่มีข้อมูล หรือไม่พบรายการที่ค้นหา</td></tr>`;
       return;
     }
 
@@ -1370,9 +1436,25 @@
       const isSelected = selectedIds.has(r.id);
       const grpId = r.groupId || resolveGroupIdByEmpType(r.empType);
       const grpObj = getGroupObj(grpId);
+
+      const checkboxTd = isAdmin
+        ? `<td><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection('${r.id}', this.checked)"></td>`
+        : "";
+
+      const statusBadge = isAdmin
+        ? `<span class="badge-status ${r.printed ? 'status-printed' : 'status-pending'}" style="cursor:pointer;" onclick="toggleSinglePrintStatus('${r.id}')" title="คลิกเพื่อสลับสถานะ">${r.printed ? 'พิมพ์แล้ว' : 'ยังไม่พิมพ์'}</span>`
+        : `<span class="badge-status ${r.printed ? 'status-printed' : 'status-pending'}">${r.printed ? 'พิมพ์แล้ว' : 'ยังไม่พิมพ์'}</span>`;
+
+      const actionTd = isAdmin
+        ? `<td style="white-space:nowrap;">
+             <button class="btn btn-outline" style="padding:4px 8px; font-size:0.74rem;" onclick="addSingleRecordToPrint('${r.id}')">+ คิวพิมพ์</button>
+             <button class="btn btn-danger" style="padding:4px 8px; font-size:0.74rem;" onclick="deleteSingleRecord('${r.id}')" title="ลบรายการนี้">🗑️</button>
+           </td>`
+        : "";
+
       return `
         <tr class="${isSelected ? 'selected-row' : ''}">
-          <td><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection('${r.id}', this.checked)"></td>
+          ${checkboxTd}
           <td><strong>#${r.seq}</strong></td>
           <td>${r.reqDate}</td>
           <td><strong style="color:var(--primary); font-size:0.94rem;">${r.plate}</strong></td>
@@ -1382,27 +1464,22 @@
           <td>${r.dept}</td>
           <td>${r.vehicleType} ${r.brand} ${r.color}</td>
           <td style="color:#64748b; font-size:0.78rem;">${r.note || "-"}</td>
-          <td>
-            <span class="badge-status ${r.printed ? 'status-printed' : 'status-pending'}" onclick="toggleSinglePrintStatus('${r.id}')" title="คลิกเพื่อสลับสถานะ">
-              ${r.printed ? 'พิมพ์แล้ว' : 'ยังไม่พิมพ์'}
-            </span>
-          </td>
-          <td style="white-space:nowrap;">
-            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.74rem;" onclick="addSingleRecordToPrint('${r.id}')">+ คิวพิมพ์</button>
-            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.74rem;" onclick="deleteSingleRecord('${r.id}')" title="ลบรายการนี้">🗑️</button>
-          </td>
+          <td>${statusBadge}</td>
+          ${actionTd}
         </tr>
       `;
     }).join("");
   }
 
   function toggleRowSelection(id, checked) {
+    if (!isAdminUser()) return;
     if (checked) selectedIds.add(id);
     else selectedIds.delete(id);
     renderDatabaseTable();
   }
 
   function toggleSelectAll(checkbox) {
+    if (!isAdminUser()) return;
     const filtered = getFilteredRecords();
     if (checkbox.checked) {
       filtered.forEach(r => selectedIds.add(r.id));
@@ -1413,8 +1490,13 @@
   }
 
   function selectNextUnprinted8() {
+    if (!isAdminUser()) return;
     selectedIds.clear();
-    const unprinted = getFilteredRecords().filter(r => !r.printed).slice(0, MAX_SLOTS);
+    const unprinted = getFilteredRecords()
+      .filter(r => !r.printed)
+      .sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0))
+      .slice(0, MAX_SLOTS);
+
     if (unprinted.length === 0) {
       alert("ไม่มีรายการที่ยังไม่ได้พิมพ์ในตัวกรองปัจจุบัน");
       return;
@@ -1424,6 +1506,7 @@
   }
 
   async function toggleSinglePrintStatus(id) {
+    if (!isAdminUser()) return;
     const rec = dbRecords.find(r => r.id === id);
     if (rec) {
       rec.printed = !rec.printed;
@@ -1433,11 +1516,16 @@
   }
 
   function sendSelectedToPrint() {
+    if (!isAdminUser()) return;
     if (selectedIds.size === 0) {
       alert("กรุณาติ๊กเลือกรายการอย่างน้อย 1 คันก่อนครับ");
       return;
     }
-    const chosen = dbRecords.filter(r => selectedIds.has(r.id)).slice(0, MAX_SLOTS);
+    const chosen = dbRecords
+      .filter(r => selectedIds.has(r.id))
+      .sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0))
+      .slice(0, MAX_SLOTS);
+
     for (let i = 0; i < MAX_SLOTS; i++) {
       if (chosen[i]) {
         printSlots[i] = {
@@ -1457,6 +1545,7 @@
   }
 
   function addSingleRecordToPrint(id) {
+    if (!isAdminUser()) return;
     const rec = dbRecords.find(r => r.id === id);
     if (!rec) return;
     let emptyIdx = printSlots.findIndex(s => !s.plate);
@@ -1471,6 +1560,7 @@
     };
     renderSlotInputs();
     renderStickerSheet();
+    alert(`เพิ่มทะเบียน ${rec.plate} ลงในช่องพิมพ์สติกเกอร์ดวงที่ ${emptyIdx + 1} แล้ว`);
   }
 
   function getBhhPatternSvg() {
@@ -1499,6 +1589,7 @@
 
   function renderSlotInputs() {
     const container = document.getElementById("slotInputsContainer");
+    if (!container) return;
     container.innerHTML = printSlots.map((slot, i) => `
       <div class="slot-row">
         <div class="slot-num">${i + 1}</div>
@@ -1514,12 +1605,14 @@
   }
 
   function updateSlot(index, field, value) {
+    if (!isAdminUser()) return;
     printSlots[index][field] = value;
     renderStickerSheet();
     updateQueueBadge();
   }
 
   function clearSingleSlot(index) {
+    if (!isAdminUser()) return;
     printSlots[index] = { id: null, seq: "", plate: "", subText: "", groupId: "staff_bhh" };
     renderSlotInputs();
     renderStickerSheet();
@@ -1527,11 +1620,13 @@
 
   function updateQueueBadge() {
     const activeCount = printSlots.filter(s => s.plate.trim() !== "").length;
-    document.getElementById("queueCountBadge").innerText = activeCount;
+    const badge = document.getElementById("queueCountBadge");
+    if (badge) badge.innerText = activeCount;
   }
 
   function renderStickerSheet() {
     const grid = document.getElementById("stickerGrid");
+    if (!grid) return;
     grid.innerHTML = "";
     const baseDeptScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dept-scale')) || 8.6;
 
@@ -1566,6 +1661,7 @@
   }
 
   async function markCurrentQueueAsPrinted() {
+    if (!isAdminUser()) return;
     let count = 0;
     printSlots.forEach(slot => {
       if (slot.id) {
@@ -1583,6 +1679,7 @@
   }
 
   function exportSheetAsImage() {
+    if (!isAdminUser()) return;
     const sheet = document.getElementById("printableSheet");
     html2canvas(sheet, { scale: 3, useCORS: true }).then(canvas => {
       const link = document.createElement("a");
@@ -1593,11 +1690,13 @@
   }
 
   function exportDatabaseToExcel() {
+    if (!isAdminUser()) return;
     if (dbRecords.length === 0) {
       alert("ยังไม่มีข้อมูลในระบบให้ส่งออก");
       return;
     }
-    const exportData = dbRecords.map(r => ({
+    const sorted = [...dbRecords].sort((a, b) => (Number(a.seq) || 0) - (Number(b.seq) || 0));
+    const exportData = sorted.map(r => ({
       "ลำดับ": r.seq,
       "วันที่แจ้งขอทำสติกเกอร์": r.reqDate,
       "ชื่อ-นามสกุล เจ้าของรถ": r.ownerName,
@@ -1620,6 +1719,7 @@
   }
 
   function downloadJsonBackup() {
+    if (!isAdminUser()) return;
     const payload = JSON.stringify({ updatedAt: new Date().toISOString(), colorGroups, users: appUsers, records: dbRecords }, null, 2);
     const blob = new Blob([payload], { type: "application/json" });
     const link = document.createElement("a");
@@ -1629,7 +1729,7 @@
   }
 
   async function clearDatabase() {
-    if (!currentUser || currentUser.role !== "admin") {
+    if (!isAdminUser()) {
       alert("เฉพาะ Admin เท่านั้นที่สามารถล้างฐานข้อมูลทั้งหมดได้");
       return;
     }
