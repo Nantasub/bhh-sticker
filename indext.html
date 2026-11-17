@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบออนไลน์จัดการสติกเกอร์รถยนต์ - Bangkok Hospital Hatyai</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700;800&family=Taviraj:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --primary: #003366;
+      --secondary: #0284c7;
+      --bg: #f1f5f9;
+      --border: #cbd5e1;
+      --text-offset-y: 46.2%;
+      --plate-scale: 13.8pt;
+      --dept-scale: 8.6pt;
+    }
+    * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
+    body { margin: 0; background: var(--bg); color: #1e293b; }
+
+    /* หน้าต่าง Loading */
+    #loadingOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: #fff;
+      font-family: 'Prompt', sans-serif;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 5px solid rgba(255,255,255,0.25);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===================================================================== */
+    /* หน้าจอเข้าสู่ระบบ (Login Screen) */
+    /* ===================================================================== */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #001f4d 0%, #003366 50%, #0369a1 100%);
+      padding: 20px;
+    }
+    .login-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 16px;
+      padding: 32px 28px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .login-header h2 {
+      margin: 10px 0 4px 0;
+      font-family: 'Prompt', sans-serif;
+      color: var(--primary);
+      font-size: 1.35rem;
+    }
+    .login-header p {
+      margin: 0;
+      color: #64748b;
+      font-size: 0.88rem;
+    }
+    .form-group { margin-bottom: 16px; }
+    label { font-size: 0.84rem; font-weight: 700; color: #334155; display: block; margin-bottom: 5px; }
+    input[type="text"], input[type="password"], input[type="url"], input[type="color"], select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.92rem;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--secondary);
+      box-shadow: 0 0 0 3px rgba(2,132,199,0.15);
+    }
+
+    /* ===================================================================== */
+    /* หน้าจอหลักของระบบ (Main App) */
+    /* ===================================================================== */
+    #mainApp { display: none; }
+
+    .top-navbar {
+      background: var(--primary);
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .brand-title {
+      font-family: 'Prompt', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .cloud-badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-weight: 600;
+      background: #dcfce7;
+      color: #166534;
+    }
+    .cloud-badge.offline {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .nav-tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .tab-btn {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Prompt', sans-serif;
+      font-weight: 600;
+      font-size: 0.86rem;
+      transition: 0.2s;
+    }
+    .tab-btn.active { background: #ffffff; color: var(--primary); }
+    .user-info-pill {
+      background: rgba(0,0,0,0.25);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-view { display: none; padding: 18px; max-width: 1560px; margin: 0 auto; }
+    .page-view.active { display: block; }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+      margin-bottom: 14px;
+    }
+    .toolbar-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Prompt', sans-serif;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #002244; }
+    .btn-success { background: #00b050; color: #fff; }
+    .btn-success:hover { background: #009040; }
+    .btn-teal { background: #0d9488; color: #fff; }
+    .btn-warning { background: #d97706; color: #fff; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-outline { background: #f8fafc; border: 1px solid #94a3b8; color: #334155; }
+    .btn-outline:hover { background: #e2e8f0; }
+
+    /* ตารางฐานข้อมูล */
+    .table-container {
+      max-height: 54vh;
+      overflow: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f1f5f9;
+      padding: 9px 8px;
+      text-align: left;
+      border-bottom: 2px solid #cbd5e1;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+    tr:hover { background: #f8fafc; }
+    tr.selected-row { background: #e0f2fe !important; }
+    .badge-status {
+      padding: 3px 8px;
+      border-radius: 99px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .status-printed { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .color-dot {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+
+    /* หน้าสั่งพิมพ์สติกเกอร์ (8 ดวง) */
+    .print-workspace { display: flex; gap: 20px; align-items: flex-start; }
+    .print-sidebar { flex: 1; min-width: 480px; }
+    .slot-row {
+      display: grid;
+      grid-template-columns: 26px 1fr 1fr 1.35fr 26px;
+      gap: 6px;
+      margin-bottom: 7px;
+      align-items: center;
+    }
+    .slot-num {
+      background: #e2e8f0;
+      text-align: center;
+      font-weight: 700;
+      padding: 6px 0;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    /* กระดาษ A4 (8 ดวง ขนาด 5.3 x 6.0 cm) */
+    .preview-wrapper {
+      background: #475569;
+      padding: 20px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      overflow: auto;
+    }
+    .a4-sheet {
+      width: 210mm;
+      height: 297mm;
+      background: #ffffff;
+      padding: 14mm 10mm;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .sheet-caption {
+      width: 100%;
+      text-align: right;
+      font-size: 9px;
+      color: #64748b;
+      margin-bottom: 4mm;
+    }
+    .sticker-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 53mm);
+      grid-template-rows: repeat(4, 60mm);
+      gap: 4mm 10mm;
+      justify-content: center;
+    }
+
+    /* โครงสร้างสติกเกอร์ BHH */
+    .sticker-item {
+      width: 53mm;
+      height: 60mm;
+      position: relative;
+      background-color: var(--frame-color, #003366);
+      border: 1px dashed #334155;
+      padding: 3.8mm 4.2mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .sticker-inner-white {
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+    .bhh-svg-pattern {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .cross-text-overlay {
+      position: absolute;
+      left: 2.0%;
+      width: 71.5%;
+      top: var(--text-offset-y, 46.2%);
+      height: 17.5%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .plate-label {
+      font-family: 'Taviraj', 'Prompt', serif;
+      font-weight: 800;
+      font-size: var(--plate-scale, 13.8pt);
+      color: #000000;
+      line-height: 0.92;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      margin: 0;
+      padding: 0;
+    }
+    .dept-label {
+      font-family: 'Taviraj', 'Sarabun', serif;
+      font-weight: 800;
+      font-size: var(--dept-scale, 8.6pt);
+      color: #000000;
+      line-height: 1.0;
+      margin-top: 0.8mm;
+      max-width: 96%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      body { background: #fff; margin: 0; padding: 0; }
+      #loginScreen, .top-navbar, .print-sidebar, .sheet-caption, #dbView, #adminView, #loadingOverlay { display: none !important; }
+      #mainApp, #printView { display: block !important; padding: 0 !important; margin: 0 !important; }
+      .preview-wrapper { background: none; padding: 0; overflow: visible; }
+      .a4-sheet {
+        box-shadow: none;
+        width: 210mm;
+        height: 297mm;
+        padding: 15mm 10mm;
+        page-break-after: avoid;
+      }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- หน้าต่างแสดงสถานะกำลังโหลด -->
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div id="loadingText" style="font-size:1.1rem; font-weight:600;">กำลังซิงค์ข้อมูลกับ Cloud...</div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 1. หน้าจอเข้าสู่ระบบ (Login Screen) -->
+  <!-- ===================================================================== -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="login-header">
+        <div style="font-size:2.4rem;">🏥</div>
+        <h2>BHH Car Sticker Online</h2>
+        <p>ระบบฐานข้อมูลและพิมพ์สติกเกอร์รถยนต์ โรงพยาบาลกรุงเทพหาดใหญ่</p>
+      </div>
+
+      <div class="form-group">
+        <label>👤 ชื่อผู้ใช้งาน (User ID)</label>
+        <input type="text" id="loginUsername" placeholder="กรอก ID ผู้ใช้งาน (ค่าเริ่มต้น: admin)" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>🔑 รหัสผ่าน (Password)</label>
+        <input type="password" id="loginPassword" placeholder="กรอกรหัสผ่าน (ค่าเริ่มต้น: bhh1234)" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleLogin()">
+      </div>
+
+      <!-- ตั้งค่าลิงก์ Firebase Cloud (เชื่อมให้แล้วอัตโนมัติ) -->
+      <div style="margin-bottom:18px; background:#f0fdf4; padding:10px 12px; border-radius:8px; border:1px solid #bbf7d0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="toggleCloudConfig()">
+          <span style="font-size:0.8rem; font-weight:700; color:#166534;">✅ เชื่อมต่อ Firebase Cloud (bhh-car-sticker) แล้ว</span>
+          <span style="font-size:0.75rem; color:#15803d;">ดู/แก้ไข ▼</span>
+        </div>
+        <div id="cloudConfigBox" style="display:none; margin-top:8px;">
+          <label style="font-size:0.75rem;">Firebase Realtime Database URL:</label>
+          <input type="url" id="firebaseUrlInput" value="https://bhh-car-sticker-default-rtdb.asia-southeast1.firebasedatabase.app" style="font-size:0.8rem;">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%; padding:11px; font-size:0.95rem;" onclick="handleLogin()">
+        🔐 เข้าสู่ระบบ (Sign In)
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. หน้าจอหลักของโปรแกรม (Main Application) -->
+  <!-- ===================================================================== -->
+  <div id="mainApp">
+    <div class="top-navbar">
+      <div class="brand-title">
+        <span>🏥 BHH Sticker Cloud</span>
+        <span id="cloudStatusBadge" class="cloud-badge">☁️ เชื่อมต่อฐานข้อมูลออนไลน์แล้ว</span>
+      </div>
+
+      <div class="nav-tabs">
+        <button class="tab-btn active" id="tabDbBtn" onclick="switchTab('db')">📂 1. ฐานข้อมูล / ค้นหา (<span id="totalCountBadge">0</span>)</button>
+        <button class="tab-btn" id="tabPrintBtn" onclick="switchTab('print')">🖨️ 2. หน้าสั่งพิมพ์ (8 ดวง) [<span id="queueCountBadge">0</span>/8]</button>
+        <button class="tab-btn" id="tabAdminBtn" onclick="switchTab('admin')" style="display:none;">👥 3. จัดการผู้ใช้งาน & ตั้งค่า (Admin)</button>
+
+        <div class="user-info-pill">
+          <span id="currentUserDisplay">👤 admin (Admin)</span>
+          <button class="btn" style="padding:4px 8px; font-size:0.74rem; background:#0284c7; color:#fff;" onclick="syncFromCloud(true)" title="ดึงข้อมูลล่าสุดจาก Cloud">🔄 ซิงค์ข้อมูล</button>
+          <button class="btn btn-danger" style="padding:4px 8px; font-size:0.74rem;" onclick="handleLogout()">ออกจากระบบ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- แท็บที่ 1: ฐานข้อมูล + เพิ่มข้อมูล + ค้นหาย้อนหลัง -->
+    <!-- =================================================================== -->
+    <div class="page-view active" id="dbView">
+
+      <!-- กล่องจัดการไฟล์ Excel & สีกรอบ -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+          <div>
+            <strong style="font-size:1rem; color:var(--primary);">📊 จัดการฐานข้อมูลออนไลน์ (Import / Export / สำรองข้อมูลระยะยาว)</strong>
+            <span style="font-size:0.82rem; color:#64748b; margin-left:8px;">ซิงค์ข้อมูลขึ้น Cloud อัตโนมัติทุกครั้งที่แก้ไข</span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display:none;" onclick="this.value=null" onchange="importExcelFile(event)">
+            <button class="btn btn-primary" onclick="triggerExcelImport()">📥 Import ไฟล์ Excel ขึ้นระบบออนไลน์</button>
+            <button class="btn btn-success" onclick="exportDatabaseToExcel()">📤 Export เป็น Excel (.xlsx)</button>
+            <button class="btn btn-outline" onclick="downloadJsonBackup()">💾 สำรองฐานข้อมูล (.json)</button>
+            <button class="btn btn-danger" id="btnClearAllDb" onclick="clearDatabase()">🗑️ ล้างฐานข้อมูลทั้งหมด</button>
+          </div>
+        </div>
+
+        <div style="background:#f8fafc; padding:10px 12px; border-radius:8px; border:1px solid #e2e8f0;">
+          <div style="font-size:0.8rem; font-weight:700; margin-bottom:6px; color:#334155;">
+            🎨 มาตรฐานสีกรอบสติกเกอร์ทั้ง 5 กลุ่ม:
+          </div>
+          <div id="colorConfigBar" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"></div>
+        </div>
+      </div>
+
+      <!-- กล่องเพิ่มข้อมูลรถคันใหม่ -->
+      <div class="card" style="border-left: 5px solid #00b050;">
+        <div style="margin-bottom:10px;">
+          <strong style="font-size:0.98rem; color:#008037;">➕ เพิ่มข้อมูลรถคันใหม่ลงฐานข้อมูลออนไลน์ (พิมพ์กรอกเอง)</strong>
+        </div>
+        <div class="toolbar-grid" style="grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));">
+          <div>
+            <label>ชื่อ-นามสกุล เจ้าของรถ *</label>
+            <input type="text" id="addOwner" placeholder="เช่น สมชาย ใจดี">
+          </div>
+          <div>
+            <label>ประเภทบุคลากร (สีกรอบ) *</label>
+            <select id="addEmpType">
+              <option value="พนักงานประจำ (Full Time)">พนักงานประจำ (Full Time) [น้ำเงิน]</option>
+              <option value="พนักงานชั่วคราว (Part Time)">พนักงานชั่วคราว (Part Time) [น้ำเงิน]</option>
+              <option value="แพทย์ Full Time">แพทย์ Full Time [ม่วง]</option>
+              <option value="แพทย์ Part Time">แพทย์ Part Time [เหลือง]</option>
+              <option value="พนักงาน Outsource">พนักงาน Outsource [ส้ม]</option>
+              <option value="HEC">HEC [เขียว]</option>
+            </select>
+          </div>
+          <div>
+            <label>ชื่อหน่วยงาน / แผนก *</label>
+            <input type="text" id="addDept" list="deptListSuggestions" placeholder="เช่น Emergency หรือ Ward 6">
+            <datalist id="deptListSuggestions"></datalist>
+          </div>
+          <div>
+            <label>เลขทะเบียนรถ *</label>
+            <input type="text" id="addPlate" placeholder="เช่น 4กต5809 หรือ ขค 2951">
+          </div>
+          <div>
+            <label>ป้ายจังหวัด</label>
+            <input type="text" id="addProvince" placeholder="เช่น สงขลา" value="สงขลา">
+          </div>
+          <div>
+            <label>ประเภทรถ</label>
+            <select id="addVehicleType">
+              <option value="รถยนต์">รถยนต์</option>
+              <option value="รถจักรยานยนต์">รถจักรยานยนต์</option>
+            </select>
+          </div>
+          <div>
+            <label>ยี่ห้อ / รุ่น / สีรถ</label>
+            <input type="text" id="addBrandColor" placeholder="เช่น Honda City เทา">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+          <button class="btn btn-success" onclick="addManualRecord(false)">💾 บันทึกขึ้น Cloud</button>
+          <button class="btn btn-primary" onclick="addManualRecord(true)">⚡ บันทึก + ส่งไปหน้าพิมพ์ทันที</button>
+        </div>
+      </div>
+
+      <!-- กล่องค้นหาและกรองข้อมูล -->
+      <div class="card">
+        <div class="toolbar-grid">
+          <div>
+            <label>🔍 ค้นหาป้ายทะเบียน / ชื่อพนักงาน / ลำดับ</label>
+            <input type="text" id="searchInput" placeholder="พิมพ์ทะเบียน เช่น 4กต5809 หรือ ชื่อ..." oninput="renderDatabaseTable()">
+          </div>
+          <div>
+            <label>🏢 กรองตามหน่วยงาน (แผนก)</label>
+            <select id="filterDept" onchange="renderDatabaseTable()">
+              <option value="">-- ทุกหน่วยงาน --</option>
+            </select>
+          </div>
+          <div>
+            <label>👤 กรองตามประเภทบุคลากร</label>
+            <select id="filterEmpType" onchange="renderDatabaseTable()">
+              <option value="">-- ทุกประเภทบุคลากร --</option>
+            </select>
+          </div>
+          <div>
+            <label>🚗 กรองตามประเภทรถ</label>
+            <select id="filterVehicleType" onchange="renderDatabaseTable()">
+              <option value="">-- รถทุกประเภท --</option>
+              <option value="รถยนต์">รถยนต์</option>
+              <option value="รถจักรยานยนต์">รถจักรยานยนต์</option>
+            </select>
+          </div>
+          <div>
+            <label>🖨️ สถานะการพิมพ์</label>
+            <select id="filterPrintStatus" onchange="renderDatabaseTable()">
+              <option value="">-- ทั้งหมด --</option>
+              <option value="pending">ยังไม่ได้พิมพ์</option>
+              <option value="printed">พิมพ์แล้ว</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding-top:10px; border-top:1px solid #e2e8f0;">
+          <div style="font-size:0.86rem; color:#475569;">
+            พบข้อมูล <strong id="filteredCountText">0</strong> รายการ | เลือกไว้ <strong id="selectedCountText" style="color:var(--primary);">0</strong> รายการ
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-danger" onclick="deleteSelectedRecords()">🗑️ ลบรายการที่เลือก (<span id="deleteBtnCount">0</span>)</button>
+            <button class="btn btn-outline" onclick="selectNextUnprinted8()">⚡ เลือกคิวถัดไปที่ยังไม่พิมพ์ (8 คัน)</button>
+            <button class="btn btn-primary" onclick="sendSelectedToPrint()">➡️ ส่งรายการที่เลือกไปหน้าพิมพ์สติกเกอร์ (สูงสุด 8 ดวง)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ตารางแสดงข้อมูล -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"></th>
+                <th>ลำดับ</th>
+                <th>วันที่แจ้ง</th>
+                <th>ป้ายทะเบียน</th>
+                <th>จังหวัด</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>ประเภทบุคลากร (สีกรอบ)</th>
+                <th>ชื่อหน่วยงาน (แผนก)</th>
+                <th>ประเภทรถ / ยี่ห้อ / สี</th>
+                <th>หมายเหตุ</th>
+                <th>สถานะ</th>
+                <th style="width:140px;">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="dbTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- แท็บที่ 2: หน้าสั่งพิมพ์สติกเกอร์ 8 ดวง (5.3 x 6.0 cm) -->
+    <!-- =================================================================== -->
+    <div class="page-view" id="printView">
+      <div class="print-workspace">
+        <div class="card print-sidebar">
+          <h3 style="margin-top:0; color:var(--primary); font-family:'Prompt',sans-serif;">ตั้งค่าสติกเกอร์และคิวสั่งพิมพ์ (8 ดวง/แผ่น)</h3>
+
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:14px;">
+            <div style="font-size:0.8rem; font-weight:700; color:var(--primary); margin-bottom:6px;">
+              📐 ปรับตำแหน่งความสูง & ขนาดตัวอักษร
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div>
+                <label style="font-size:0.75rem;">ระดับความสูงขึ้น-ลง: <span id="posYVal">46.2%</span></label>
+                <input type="range" min="42" max="50" step="0.2" value="46.2" oninput="adjustTextPosition('y', this.value)" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:0.75rem;">ขนาดฟอนต์ชื่อแผนก (บรรทัด 2): <span id="deptSizeVal">8.6pt</span></label>
+                <input type="range" min="6.5" max="11" step="0.2" value="8.6" oninput="adjustTextPosition('deptSize', this.value)" style="width:100%;">
+              </div>
+            </div>
+          </div>
+
+          <div class="slot-row" style="font-size:0.76rem; font-weight:700; color:#475569; margin-bottom:4px;">
+            <div>ดวง</div>
+            <div>ป้ายทะเบียน (บรรทัดบน)</div>
+            <div>ชื่อแผนก/สังกัด (บรรทัดล่าง)</div>
+            <div>สีกรอบสติกเกอร์</div>
+            <div>ลบ</div>
+          </div>
+          <div id="slotInputsContainer"></div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="window.print()">🖨️ สั่งปริ้นท์ทันที (8 ดวง)</button>
+            <button class="btn btn-success" style="flex:1;" onclick="exportSheetAsImage()">🖼️ บันทึกเป็นไฟล์รูปภาพ (PNG)</button>
+            <button class="btn btn-warning" style="width:100%;" onclick="markCurrentQueueAsPrinted()">✅ บันทึกว่าทั้ง 8 คันนี้ "พิมพ์สติกเกอร์แล้ว"</button>
+          </div>
+        </div>
+
+        <div class="preview-wrapper">
+          <div class="a4-sheet" id="printableSheet">
+            <div class="sheet-caption">กระดาษ A4 มาตรฐาน | สติกเกอร์ขนาด กว้าง 5.3 cm x สูง 6.0 cm (จัดเรียง 2x4 = 8 ดวง ไม่ตกขอบ)</div>
+            <div class="sticker-grid" id="stickerGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- แท็บที่ 3: จัดการผู้ใช้งาน ID/Password & ตั้งค่า Cloud (เฉพาะ Admin) -->
+    <!-- =================================================================== -->
+    <div class="page-view" id="adminView">
+      <div style="display:grid; grid-template-columns: 1fr 1.5fr; gap:20px; align-items:start;">
+
+        <!-- ฟอร์มสร้างผู้ใช้งานใหม่ -->
+        <div class="card" style="border-top: 4px solid var(--primary);">
+          <h3 style="margin-top:0; color:var(--primary); font-family:'Prompt',sans-serif;">➕ สร้างบัญชีผู้ใช้งานใหม่ (สำหรับ Admin)</h3>
+          <div class="form-group">
+            <label>ชื่อผู้ใช้งาน (User ID สำหรับล็อกอิน) *</label>
+            <input type="text" id="newUserId" placeholder="เช่น staff01 หรือ bhh_guard">
+          </div>
+          <div class="form-group">
+            <label>รหัสผ่าน (Password) *</label>
+            <input type="text" id="newUserPass" placeholder="กำหนดรหัสผ่าน...">
+          </div>
+          <div class="form-group">
+            <label>ชื่อ-นามสกุล / แผนกของผู้ใช้ *</label>
+            <input type="text" id="newUserName" placeholder="เช่น เจ้าหน้าที่อาคารสถานที่">
+          </div>
+          <div class="form-group">
+            <label>ระดับสิทธิ์การใช้งาน (Role)</label>
+            <select id="newUserRole">
+              <option value="staff">Staff (ผู้ใช้งานทั่วไป - พิมพ์และจัดการสติกเกอร์)</option>
+              <option value="admin">Admin (ผู้ดูแลระบบ - สร้างรหัสผ่านและจัดการทุกส่วนได้)</option>
+            </select>
+          </div>
+          <button class="btn btn-success" style="width:100%; padding:10px;" onclick="createOrUpdateUser()">
+            💾 บันทึกบัญชีผู้ใช้งาน
+          </button>
+
+          <hr style="border:none; border-top:1px solid #e2e8f0; margin:20px 0;">
+
+          <h4 style="margin:0 0 8px 0; color:#0f766e;">☁️ ลิงก์ฐานข้อมูล Firebase Cloud ปัจจุบัน</h4>
+          <div class="form-group">
+            <label>Firebase Realtime Database URL</label>
+            <input type="url" id="adminFirebaseUrl" value="https://bhh-car-sticker-default-rtdb.asia-southeast1.firebasedatabase.app">
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="saveCloudUrlFromAdmin()">
+            🔗 บันทึกและเชื่อมต่อ Cloud ทันที
+          </button>
+        </div>
+
+        <!-- ตารางรายชื่อผู้ใช้งานทั้งหมดในระบบ -->
+        <div class="card">
+          <h3 style="margin-top:0; color:var(--primary); font-family:'Prompt',sans-serif;">👥 รายชื่อผู้ใช้งานในระบบทั้งหมด</h3>
+          <p style="font-size:0.82rem; color:#64748b; margin-top:-6px;">
+            แอดมินสามารถดูรหัสผ่าน แก้ไขรหัสผ่าน หรือลบบัญชีผู้ใช้งานได้จากตารางนี้
+          </p>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>รหัสผ่าน (Password)</th>
+                  <th>ชื่อผู้ใช้งาน / แผนก</th>
+                  <th>ระดับสิทธิ์</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  // =========================================================================
+  // ลิงก์ Firebase Realtime Database ของระบบสติกเกอร์ BHH (ฝังถาวรเรียบร้อย)
+  // =========================================================================
+  const DEFAULT_FIREBASE_URL = "https://bhh-car-sticker-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+  const BHH_COLOR_GROUPS = [
+    { groupId: "doc_ft",    label: "แพทย์ FULL TIME (สีม่วง)",                color: "#7e22ce", matchTypes: ["แพทย์ full time"] },
+    { groupId: "doc_pt",    label: "แพทย์ PART TIME (สีเหลือง)",               color: "#eab308", matchTypes: ["แพทย์ part time"] },
+    { groupId: "staff_bhh", label: "พนักงาน รพ. FULL + PART TIME (สีน้ำเงิน)", color: "#003366", matchTypes: ["พนักงานประจำ (full time)", "พนักงานชั่วคราว (part time)", "พนักงานโรงพยาบาล"] },
+    { groupId: "outsource", label: "พนักงาน OUTSOURCE (สีส้ม)",                color: "#ea580c", matchTypes: ["พนักงาน outsource", "outsource"] },
+    { groupId: "hec",       label: "HEC (สีเขียว)",                           color: "#00b050", matchTypes: ["hec"] }
+  ];
+
+  // บัญชีแอดมินเริ่มต้น
+  const DEFAULT_USERS = [
+    { username: "admin", password: "bhh1234", displayName: "ผู้ดูแลระบบหลัก (Engineering Manager)", role: "admin" }
+  ];
+
+  const MAX_SLOTS = 8;
+  let firebaseBaseUrl = DEFAULT_FIREBASE_URL;
+  let dbRecords = [];
+  let appUsers = [];
+  let currentUser = null;
+  let selectedIds = new Set();
+  let printSlots = [];
+  let colorGroups = [];
+
+  function showLoading(msg) {
+    document.getElementById("loadingText").innerText = msg || "กำลังประมวลผล...";
+    document.getElementById("loadingOverlay").style.display = "flex";
+  }
+
+  function hideLoading() {
+    document.getElementById("loadingOverlay").style.display = "none";
+  }
+
+  function toggleCloudConfig() {
+    const box = document.getElementById("cloudConfigBox");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  }
+
+  // =========================================================================
+  // 1. เริ่มต้นระบบและโหลดค่าจาก Firebase Cloud ทันที
+  // =========================================================================
+  async function initSystem() {
+    const savedCustomUrl = localStorage.getItem("bhh_firebase_url");
+    firebaseBaseUrl = (savedCustomUrl || DEFAULT_FIREBASE_URL).trim().replace(/\/+$/, "");
+    document.getElementById("firebaseUrlInput").value = firebaseBaseUrl;
+    document.getElementById("adminFirebaseUrl").value = firebaseBaseUrl;
+
+    try {
+      const savedColors = localStorage.getItem("bhh_color_groups_v4");
+      colorGroups = savedColors ? JSON.parse(savedColors) : BHH_COLOR_GROUPS;
+    } catch (e) {
+      colorGroups = BHH_COLOR_GROUPS;
+    }
+
+    try {
+      const savedUsers = localStorage.getItem("bhh_app_users");
+      appUsers = savedUsers ? JSON.parse(savedUsers) : DEFAULT_USERS;
+    } catch (e) {
+      appUsers = DEFAULT_USERS;
+    }
+
+    try {
+      const savedDb = localStorage.getItem("bhh_car_database");
+      if (savedDb) dbRecords = JSON.parse(savedDb);
+    } catch (e) {
+      dbRecords = [];
+    }
+
+    // ดึงข้อมูลล่าสุดจาก Firebase Cloud ทันทีที่เปิดหน้าเว็บ
+    if (firebaseBaseUrl) {
+      await syncFromCloud(false);
+    }
+    updateCloudBadge();
+
+    // ตั้งค่าตัวอย่างสติกเกอร์เริ่มต้น
+    const defaultExamples = [
+      { plate: "4กต5809", subText: "Emergency", groupId: "staff_bhh" },
+      { plate: "ขค 2951", subText: "Heart Clinic", groupId: "doc_pt" },
+      { plate: "2 ขพ 2362", subText: "Nursing", groupId: "doc_pt" },
+      { plate: "9536", subText: "FPS งานรักษาความปลอดภัย", groupId: "outsource" }
+    ];
+
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const ex = defaultExamples[i];
+      printSlots.push({
+        id: null,
+        seq: "",
+        plate: ex ? ex.plate : "",
+        subText: ex ? ex.subText : "",
+        groupId: ex ? ex.groupId : "staff_bhh"
+      });
+    }
+
+    const savedSession = sessionStorage.getItem("bhh_logged_user");
+    if (savedSession) {
+      currentUser = JSON.parse(savedSession);
+      enterMainApp();
+    }
+  }
+
+  // =========================================================================
+  // 2. ระบบซิงค์ฐานข้อมูลออนไลน์ (Firebase REST API)
+  // =========================================================================
+  function updateCloudBadge() {
+    const badge = document.getElementById("cloudStatusBadge");
+    if (firebaseBaseUrl) {
+      badge.className = "cloud-badge";
+      badge.innerText = "☁️ ออนไลน์ (bhh-car-sticker Connected)";
+    } else {
+      badge.className = "cloud-badge offline";
+      badge.innerText = "⚠️ โหมดออฟไลน์ในเครื่อง";
+    }
+  }
+
+  async function syncFromCloud(showAlert) {
+    if (!firebaseBaseUrl) return;
+    try {
+      showLoading("กำลังดึงข้อมูลล่าสุดจากฐานข้อมูลออนไลน์...");
+      const res = await fetch(`${firebaseBaseUrl}/bhh_sticker_app.json`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      if (data) {
+        if (Array.isArray(data.records)) {
+          dbRecords = data.records;
+        } else if (data.records && typeof data.records === "object") {
+          dbRecords = Object.values(data.records);
+        } else {
+          dbRecords = [];
+        }
+
+        if (Array.isArray(data.users) && data.users.length > 0) {
+          appUsers = data.users;
+        }
+        if (Array.isArray(data.colorGroups)) {
+          colorGroups = data.colorGroups;
+        }
+
+        localStorage.setItem("bhh_car_database", JSON.stringify(dbRecords));
+        localStorage.setItem("bhh_app_users", JSON.stringify(appUsers));
+        localStorage.setItem("bhh_color_groups_v4", JSON.stringify(colorGroups));
+      } else {
+        // กรณีเพิ่งสร้าง Firebase ใหม่และยังไม่มีก้อนข้อมูล ให้ส่งข้อมูลเริ่มต้นขึ้นไปสร้างอัตโนมัติ
+        await saveDatabase();
+      }
+
+      hideLoading();
+      renderColorConfigBar();
+      populateFilterDropdowns();
+      renderDatabaseTable();
+      renderUserTable();
+      if (showAlert) alert(`✅ ซิงค์ข้อมูลออนไลน์สำเร็จ! (ข้อมูลทั้งหมด ${dbRecords.length} รายการ)`);
+    } catch (err) {
+      hideLoading();
+      console.error("Cloud sync error:", err);
+      if (showAlert) alert("❌ ไม่สามารถเชื่อมต่อ Firebase ได้ กรุณาตรวจสอบว่าตั้งค่า Rules ใน Firebase เป็น .read: true, .write: true แล้วหรือยังครับ");
+    }
+  }
+
+  async function saveDatabase() {
+    try {
+      localStorage.setItem("bhh_car_database", JSON.stringify(dbRecords));
+      localStorage.setItem("bhh_app_users", JSON.stringify(appUsers));
+      localStorage.setItem("bhh_color_groups_v4", JSON.stringify(colorGroups));
+    } catch (e) {
+      console.warn("localStorage warning:", e);
+    }
+
+    const badgeEl = document.getElementById("totalCountBadge");
+    if (badgeEl) badgeEl.innerText = dbRecords.length;
+
+    if (firebaseBaseUrl) {
+      try {
+        const payload = {
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser ? currentUser.username : "system",
+          colorGroups: colorGroups,
+          users: appUsers,
+          records: dbRecords
+        };
+        const res = await fetch(`${firebaseBaseUrl}/bhh_sticker_app.json`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+      } catch (err) {
+        console.error("Cloud push failed:", err);
+        alert("⚠️ ไม่สามารถบันทึกขึ้น Firebase Cloud ได้ กรุณาตรวจสอบว่ากด Publish ในหน้า Rules ของ Firebase แล้วหรือยังครับ");
+      }
+    }
+  }
+
+  // =========================================================================
+  // 3. ระบบล็อกอิน และจัดการผู้ใช้งาน (Admin & Staff Authentication)
+  // =========================================================================
+  async function handleLogin() {
+    const inputUrl = document.getElementById("firebaseUrlInput").value.trim().replace(/\/+$/, "");
+    if (inputUrl && inputUrl !== firebaseBaseUrl) {
+      firebaseBaseUrl = inputUrl;
+      localStorage.setItem("bhh_firebase_url", firebaseBaseUrl);
+      await syncFromCloud(false);
+    }
+
+    const u = document.getElementById("loginUsername").value.trim();
+    const p = document.getElementById("loginPassword").value.trim();
+
+    if (!u || !p) {
+      alert("กรุณากรอก User ID และรหัสผ่านครับ");
+      return;
+    }
+
+    const foundUser = appUsers.find(item => item.username.toLowerCase() === u.toLowerCase() && item.password === p);
+    if (!foundUser) {
+      alert("❌ User ID หรือ รหัสผ่าน ไม่ถูกต้อง!");
+      return;
+    }
+
+    currentUser = foundUser;
+    sessionStorage.setItem("bhh_logged_user", JSON.stringify(currentUser));
+    enterMainApp();
+  }
+
+  function enterMainApp() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("mainApp").style.display = "block";
+    document.getElementById("currentUserDisplay").innerText = `👤 ${currentUser.displayName} (${currentUser.role.toUpperCase()})`;
+
+    const isAdmin = currentUser.role === "admin";
+    document.getElementById("tabAdminBtn").style.display = isAdmin ? "inline-block" : "none";
+    document.getElementById("btnClearAllDb").style.display = isAdmin ? "inline-flex" : "none";
+
+    updateCloudBadge();
+    renderColorConfigBar();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+    renderSlotInputs();
+    renderStickerSheet();
+    renderUserTable();
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem("bhh_logged_user");
+    currentUser = null;
+    document.getElementById("loginPassword").value = "";
+    document.getElementById("mainApp").style.display = "none";
+    document.getElementById("loginScreen").style.display = "flex";
+  }
+
+  async function createOrUpdateUser() {
+    if (!currentUser || currentUser.role !== "admin") return;
+
+    const uid = document.getElementById("newUserId").value.trim();
+    const pass = document.getElementById("newUserPass").value.trim();
+    const name = document.getElementById("newUserName").value.trim();
+    const role = document.getElementById("newUserRole").value;
+
+    if (!uid || !pass || !name) {
+      alert("กรุณากรอก User ID, รหัสผ่าน และชื่อผู้ใช้งานให้ครบถ้วนครับ");
+      return;
+    }
+
+    const existingIdx = appUsers.findIndex(u => u.username.toLowerCase() === uid.toLowerCase());
+    if (existingIdx >= 0) {
+      appUsers[existingIdx] = { username: uid, password: pass, displayName: name, role: role };
+      alert(`อัปเดตข้อมูลและรหัสผ่านของ "${uid}" เรียบร้อยแล้ว!`);
+    } else {
+      appUsers.push({ username: uid, password: pass, displayName: name, role: role });
+      alert(`สร้างบัญชีผู้ใช้งาน "${uid}" เรียบร้อยแล้ว!`);
+    }
+
+    document.getElementById("newUserId").value = "";
+    document.getElementById("newUserPass").value = "";
+    document.getElementById("newUserName").value = "";
+
+    await saveDatabase();
+    renderUserTable();
+  }
+
+  function editUserForm(username) {
+    const u = appUsers.find(item => item.username === username);
+    if (!u) return;
+    document.getElementById("newUserId").value = u.username;
+    document.getElementById("newUserPass").value = u.password;
+    document.getElementById("newUserName").value = u.displayName;
+    document.getElementById("newUserRole").value = u.role;
+  }
+
+  async function deleteUserAccount(username) {
+    if (username.toLowerCase() === "admin") {
+      alert("ไม่สามารถลบบัญชี admin หลักได้ (แต่สามารถแก้ไขรหัสผ่านได้ครับ)");
+      return;
+    }
+    if (!confirm(`ยืนยันการลบบัญชีผู้ใช้งาน "${username}" ?`)) return;
+
+    appUsers = appUsers.filter(u => u.username !== username);
+    await saveDatabase();
+    renderUserTable();
+  }
+
+  function renderUserTable() {
+    const tbody = document.getElementById("userTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = appUsers.map(u => `
+      <tr>
+        <td><strong>${u.username}</strong></td>
+        <td><code>${u.password}</code></td>
+        <td>${u.displayName}</td>
+        <td>
+          <span class="badge-status ${u.role === 'admin' ? 'status-printed' : 'status-pending'}">
+            ${u.role.toUpperCase()}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-outline" style="padding:4px 8px; font-size:0.74rem;" onclick="editUserForm('${u.username}')">✏️ แก้ไข</button>
+          ${u.username.toLowerCase() !== 'admin' ? `<button class="btn btn-danger" style="padding:4px 8px; font-size:0.74rem;" onclick="deleteUserAccount('${u.username}')">🗑️ ลบ</button>` : ''}
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  async function saveCloudUrlFromAdmin() {
+    const url = document.getElementById("adminFirebaseUrl").value.trim().replace(/\/+$/, "");
+    firebaseBaseUrl = url;
+    localStorage.setItem("bhh_firebase_url", firebaseBaseUrl);
+    document.getElementById("firebaseUrlInput").value = firebaseBaseUrl;
+    updateCloudBadge();
+    if (firebaseBaseUrl) {
+      await syncFromCloud(true);
+    } else {
+      alert("เปลี่ยนเป็นโหมดออฟไลน์เรียบร้อยครับ");
+    }
+  }
+
+  // =========================================================================
+  // 4. การสลับหน้าและจัดการข้อมูลสติกเกอร์
+  // =========================================================================
+  function switchTab(tab) {
+    document.getElementById("dbView").classList.toggle("active", tab === "db");
+    document.getElementById("printView").classList.toggle("active", tab === "print");
+    document.getElementById("adminView").classList.toggle("active", tab === "admin");
+
+    document.getElementById("tabDbBtn").classList.toggle("active", tab === "db");
+    document.getElementById("tabPrintBtn").classList.toggle("active", tab === "print");
+    document.getElementById("tabAdminBtn").classList.toggle("active", tab === "admin");
+  }
+
+  function adjustTextPosition(type, val) {
+    if (type === 'y') {
+      document.documentElement.style.setProperty('--text-offset-y', val + '%');
+      document.getElementById('posYVal').innerText = val + '%';
+    } else if (type === 'deptSize') {
+      document.documentElement.style.setProperty('--dept-scale', val + 'pt');
+      document.getElementById('deptSizeVal').innerText = val + 'pt';
+      renderStickerSheet();
+    }
+  }
+
+  function resolveGroupIdByEmpType(empTypeStr) {
+    const raw = String(empTypeStr || "").trim().toLowerCase();
+    for (const grp of colorGroups) {
+      if (grp.matchTypes.some(keyword => raw.includes(keyword))) {
+        return grp.groupId;
+      }
+    }
+    return "staff_bhh";
+  }
+
+  function getGroupObj(groupId) {
+    return colorGroups.find(g => g.groupId === groupId) || colorGroups[2];
+  }
+
+  function formatSubTextForSticker(empType, dept) {
+    if (String(empType).toUpperCase().includes("HEC")) {
+      return "HEC";
+    }
+    const cleanDept = String(dept || "").replace(/^BHH\d+\s*/i, "").trim();
+    return cleanDept || empType;
+  }
+
+  function renderColorConfigBar() {
+    const bar = document.getElementById("colorConfigBar");
+    bar.innerHTML = colorGroups.map((grp, idx) => `
+      <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; background:#fff; padding:4px 9px; border-radius:6px; border:1px solid #cbd5e1; font-weight:600;">
+        <input type="color" value="${grp.color}" onchange="updateGroupColor(${idx}, this.value)" style="width:26px; height:22px; padding:0; border:none; cursor:pointer;">
+        <span>${grp.label}</span>
+      </div>
+    `).join("");
+  }
+
+  function updateGroupColor(index, newColor) {
+    colorGroups[index].color = newColor;
+    saveDatabase();
+    renderDatabaseTable();
+    renderStickerSheet();
+  }
+
+  async function addManualRecord(sendToPrintImmediately) {
+    const ownerName = document.getElementById("addOwner").value.trim();
+    const empType = document.getElementById("addEmpType").value;
+    const dept = document.getElementById("addDept").value.trim();
+    const plate = document.getElementById("addPlate").value.trim();
+    const province = document.getElementById("addProvince").value.trim();
+    const vehicleType = document.getElementById("addVehicleType").value;
+    const brandColor = document.getElementById("addBrandColor").value.trim();
+
+    if (!plate) {
+      alert("กรุณากรอกเลขทะเบียนรถก่อนบันทึกครับ");
+      return;
+    }
+
+    const nextSeq = dbRecords.length > 0 ? Math.max(...dbRecords.map(r => Number(r.seq) || 0)) + 1 : 1;
+    const todayStr = new Date().toLocaleDateString("th-TH", { year: 'numeric', month: '2-digit', day: '2-digit' });
+
+    const newRec = {
+      id: "row_" + Date.now(),
+      seq: nextSeq,
+      reqDate: todayStr,
+      ownerName: ownerName || "-",
+      empType: empType,
+      groupId: resolveGroupIdByEmpType(empType),
+      dept: dept || empType,
+      vehicleType: vehicleType,
+      brand: brandColor,
+      model: "",
+      color: "",
+      plate: plate,
+      province: province,
+      note: `เพิ่มโดย ${currentUser ? currentUser.username : 'staff'}`,
+      printed: false
+    };
+
+    dbRecords.unshift(newRec);
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+
+    document.getElementById("addOwner").value = "";
+    document.getElementById("addPlate").value = "";
+    document.getElementById("addBrandColor").value = "";
+
+    if (sendToPrintImmediately) {
+      addSingleRecordToPrint(newRec.id);
+      switchTab("print");
+    } else {
+      alert(`✅ บันทึกข้อมูลทะเบียน "${plate}" (ลำดับที่ #${nextSeq}) ขึ้นระบบออนไลน์เรียบร้อยแล้วครับ!`);
+    }
+  }
+
+  async function deleteSelectedRecords() {
+    if (selectedIds.size === 0) {
+      alert("กรุณาติ๊กถูกหน้ารายการที่ต้องการลบอย่างน้อย 1 รายการก่อนครับ");
+      return;
+    }
+    const count = selectedIds.size;
+    if (!confirm(`ยืนยันการลบข้อมูลที่เลือกไว้จำนวน ${count} รายการออกจากระบบออนไลน์ใช่หรือไม่?`)) return;
+
+    dbRecords = dbRecords.filter(r => !selectedIds.has(r.id));
+    selectedIds.clear();
+    document.getElementById("selectAllCheckbox").checked = false;
+
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+    alert(`ลบข้อมูลจำนวน ${count} รายการเรียบร้อยแล้วครับ`);
+  }
+
+  async function deleteSingleRecord(id) {
+    const rec = dbRecords.find(r => r.id === id);
+    if (!rec) return;
+    if (!confirm(`ต้องการลบข้อมูลทะเบียน "${rec.plate}" (${rec.ownerName}) ใช่หรือไม่?`)) return;
+
+    dbRecords = dbRecords.filter(r => r.id !== id);
+    selectedIds.delete(id);
+
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+  }
+
+  function triggerExcelImport() {
+    if (typeof XLSX === "undefined") {
+      alert("⚠️ ไม่สามารถโหลดไลบรารีอ่านไฟล์ Excel ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วกด Refresh (F5) ครับ");
+      return;
+    }
+    const input = document.getElementById("excelFileInput");
+    input.value = "";
+    input.click();
+  }
+
+  function importExcelFile(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    showLoading(`กำลังอ่านไฟล์ "${file.name}" และอัปโหลดขึ้น Cloud...`);
+
+    setTimeout(() => {
+      const reader = new FileReader();
+      reader.onerror = function() {
+        hideLoading();
+        alert("เกิดข้อผิดพลาดในการอ่านไฟล์");
+      };
+
+      reader.onload = async function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array', cellDates: false });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+
+          if (worksheet['!ref']) {
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            if (range.e.r > 5000) range.e.r = 5000;
+            worksheet['!ref'] = XLSX.utils.encode_range(range);
+          }
+
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", raw: true });
+          if (!rows || rows.length <= 1) {
+            hideLoading();
+            alert("ไม่พบข้อมูลในไฟล์ Excel ที่เลือกครับ");
+            return;
+          }
+
+          const imported = [];
+          let emptyStreak = 0;
+
+          for (let i = 1; i < rows.length; i++) {
+            const r = rows[i];
+            if (!r || (!r[2] && !r[9])) {
+              emptyStreak++;
+              if (emptyStreak > 50) break;
+              continue;
+            }
+            emptyStreak = 0;
+
+            const seqNum = imported.length + 1;
+            const reqDate = formatExcelDateFast(r[1] || r[0]);
+            const ownerName = String(r[2] || "").trim();
+            const empType = String(r[3] || "พนักงานประจำ (Full Time)").trim() || "พนักงานประจำ (Full Time)";
+            const dept = String(r[4] || "").trim();
+            const vehicleType = String(r[5] || "").trim();
+            const brand = String(r[6] || "").trim();
+            const model = String(r[7] || "").trim();
+            const color = String(r[8] || "").trim();
+            const plate = String(r[9] || "").trim();
+            const province = String(r[10] || "").trim();
+            const note = String(r[11] || "").trim();
+
+            const isAlreadyPrinted = seqNum <= 810 || note.toLowerCase().includes("print") || note.includes("ถึง");
+
+            imported.push({
+              id: "row_" + seqNum + "_" + Date.now(),
+              seq: seqNum,
+              reqDate,
+              ownerName,
+              empType,
+              groupId: resolveGroupIdByEmpType(empType),
+              dept,
+              vehicleType,
+              brand,
+              model,
+              color,
+              plate,
+              province,
+              note,
+              printed: isAlreadyPrinted
+            });
+          }
+
+          dbRecords = imported;
+          selectedIds.clear();
+          await saveDatabase();
+          populateFilterDropdowns();
+          renderDatabaseTable();
+          hideLoading();
+          alert(`✅ นำเข้าและซิงค์ข้อมูลออนไลน์สำเร็จทั้งหมด ${imported.length} รายการ!`);
+        } catch (err) {
+          hideLoading();
+          alert("❌ ไม่สามารถนำเข้าไฟล์นี้ได้: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }, 80);
+  }
+
+  function formatExcelDateFast(val) {
+    if (!val) return "-";
+    if (typeof val === "number" && val > 20000 && val < 90000) {
+      const utcDays = Math.floor(val - 25569);
+      const d = new Date(utcDays * 86400 * 1000);
+      return d.toLocaleDateString("th-TH", { year: 'numeric', month: '2-digit', day: '2-digit' });
+    }
+    return String(val).split(" ")[0];
+  }
+
+  function populateFilterDropdowns() {
+    const deptSelect = document.getElementById("filterDept");
+    const empSelect = document.getElementById("filterEmpType");
+    const datalist = document.getElementById("deptListSuggestions");
+
+    const depts = [...new Set(dbRecords.map(r => r.dept).filter(Boolean))].sort();
+    const emps = [...new Set(dbRecords.map(r => r.empType).filter(Boolean))].sort();
+
+    deptSelect.innerHTML = `<option value="">-- ทุกหน่วยงาน (${depts.length} แผนก) --</option>` +
+      depts.map(d => `<option value="${d}">${d}</option>`).join("");
+
+    empSelect.innerHTML = `<option value="">-- ทุกประเภทบุคลากร (${emps.length} กลุ่ม) --</option>` +
+      emps.map(e => `<option value="${e}">${e}</option>`).join("");
+
+    datalist.innerHTML = depts.map(d => `<option value="${d}">`).join("");
+    document.getElementById("totalCountBadge").innerText = dbRecords.length;
+  }
+
+  function getFilteredRecords() {
+    const q = document.getElementById("searchInput").value.trim().toLowerCase();
+    const dept = document.getElementById("filterDept").value;
+    const emp = document.getElementById("filterEmpType").value;
+    const vType = document.getElementById("filterVehicleType").value;
+    const pStatus = document.getElementById("filterPrintStatus").value;
+
+    return dbRecords.filter(r => {
+      if (dept && r.dept !== dept) return false;
+      if (emp && r.empType !== emp) return false;
+      if (vType && r.vehicleType !== vType) return false;
+      if (pStatus === "printed" && !r.printed) return false;
+      if (pStatus === "pending" && r.printed) return false;
+      if (q) {
+        const matchPlate = r.plate.toLowerCase().includes(q);
+        const matchName = r.ownerName.toLowerCase().includes(q);
+        const matchDept = r.dept.toLowerCase().includes(q);
+        const matchSeq = String(r.seq) === q;
+        return matchPlate || matchName || matchDept || matchSeq;
+      }
+      return true;
+    });
+  }
+
+  function renderDatabaseTable() {
+    const tbody = document.getElementById("dbTableBody");
+    const filtered = getFilteredRecords();
+    document.getElementById("filteredCountText").innerText = filtered.length;
+    document.getElementById("selectedCountText").innerText = selectedIds.size;
+    document.getElementById("deleteBtnCount").innerText = selectedIds.size;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:24px; color:#64748b;">ยังไม่มีข้อมูล หรือไม่พบรายการที่ค้นหา</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+      const isSelected = selectedIds.has(r.id);
+      const grpId = r.groupId || resolveGroupIdByEmpType(r.empType);
+      const grpObj = getGroupObj(grpId);
+      return `
+        <tr class="${isSelected ? 'selected-row' : ''}">
+          <td><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleRowSelection('${r.id}', this.checked)"></td>
+          <td><strong>#${r.seq}</strong></td>
+          <td>${r.reqDate}</td>
+          <td><strong style="color:var(--primary); font-size:0.94rem;">${r.plate}</strong></td>
+          <td>${r.province}</td>
+          <td>${r.ownerName}</td>
+          <td><span class="color-dot" style="background:${grpObj.color};"></span>${r.empType}</td>
+          <td>${r.dept}</td>
+          <td>${r.vehicleType} ${r.brand} ${r.color}</td>
+          <td style="color:#64748b; font-size:0.78rem;">${r.note || "-"}</td>
+          <td>
+            <span class="badge-status ${r.printed ? 'status-printed' : 'status-pending'}" onclick="toggleSinglePrintStatus('${r.id}')" title="คลิกเพื่อสลับสถานะ">
+              ${r.printed ? 'พิมพ์แล้ว' : 'ยังไม่พิมพ์'}
+            </span>
+          </td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-outline" style="padding:4px 8px; font-size:0.74rem;" onclick="addSingleRecordToPrint('${r.id}')">+ คิวพิมพ์</button>
+            <button class="btn btn-danger" style="padding:4px 8px; font-size:0.74rem;" onclick="deleteSingleRecord('${r.id}')" title="ลบรายการนี้">🗑️</button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function toggleRowSelection(id, checked) {
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    renderDatabaseTable();
+  }
+
+  function toggleSelectAll(checkbox) {
+    const filtered = getFilteredRecords();
+    if (checkbox.checked) {
+      filtered.forEach(r => selectedIds.add(r.id));
+    } else {
+      filtered.forEach(r => selectedIds.delete(r.id));
+    }
+    renderDatabaseTable();
+  }
+
+  function selectNextUnprinted8() {
+    selectedIds.clear();
+    const unprinted = getFilteredRecords().filter(r => !r.printed).slice(0, MAX_SLOTS);
+    if (unprinted.length === 0) {
+      alert("ไม่มีรายการที่ยังไม่ได้พิมพ์ในตัวกรองปัจจุบัน");
+      return;
+    }
+    unprinted.forEach(r => selectedIds.add(r.id));
+    renderDatabaseTable();
+  }
+
+  async function toggleSinglePrintStatus(id) {
+    const rec = dbRecords.find(r => r.id === id);
+    if (rec) {
+      rec.printed = !rec.printed;
+      await saveDatabase();
+      renderDatabaseTable();
+    }
+  }
+
+  function sendSelectedToPrint() {
+    if (selectedIds.size === 0) {
+      alert("กรุณาติ๊กเลือกรายการอย่างน้อย 1 คันก่อนครับ");
+      return;
+    }
+    const chosen = dbRecords.filter(r => selectedIds.has(r.id)).slice(0, MAX_SLOTS);
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      if (chosen[i]) {
+        printSlots[i] = {
+          id: chosen[i].id,
+          seq: chosen[i].seq,
+          plate: chosen[i].plate,
+          subText: formatSubTextForSticker(chosen[i].empType, chosen[i].dept),
+          groupId: chosen[i].groupId || resolveGroupIdByEmpType(chosen[i].empType)
+        };
+      } else {
+        printSlots[i] = { id: null, seq: "", plate: "", subText: "", groupId: "staff_bhh" };
+      }
+    }
+    renderSlotInputs();
+    renderStickerSheet();
+    switchTab("print");
+  }
+
+  function addSingleRecordToPrint(id) {
+    const rec = dbRecords.find(r => r.id === id);
+    if (!rec) return;
+    let emptyIdx = printSlots.findIndex(s => !s.plate);
+    if (emptyIdx === -1) emptyIdx = 0;
+
+    printSlots[emptyIdx] = {
+      id: rec.id,
+      seq: rec.seq,
+      plate: rec.plate,
+      subText: formatSubTextForSticker(rec.empType, rec.dept),
+      groupId: rec.groupId || resolveGroupIdByEmpType(rec.empType)
+    };
+    renderSlotInputs();
+    renderStickerSheet();
+  }
+
+  function getBhhPatternSvg() {
+    return `
+      <svg class="bhh-svg-pattern" viewBox="0 0 237 300" xmlns="http://www.w3.org/2000/svg">
+        <rect width="237" height="300" fill="#ffffff"/>
+        <path d="M 6,6 H 38 A 9.5,9.5 0 0,1 38,25 H 6 Z" fill="#b21f2a"/>
+        <path d="M 6,25 H 39 A 9.5,9.5 0 0,1 39,44 H 6 Z" fill="#1e376d"/>
+        <polygon points="15,18 6,25 15,25" fill="#6e252b"/>
+        <rect x="15" y="10" width="9" height="29" rx="1.5" fill="#ffffff"/>
+        <rect x="6" y="20" width="28" height="9" rx="1.5" fill="#ffffff"/>
+
+        <text x="53" y="21" font-family="'Montserrat', 'Prompt', sans-serif" font-weight="800" font-size="19.5" fill="#1e376d" letter-spacing="0.6">BANGKOK</text>
+        <text x="53" y="38" font-family="'Montserrat', 'Prompt', sans-serif" font-weight="800" font-size="19.5" fill="#1e376d" letter-spacing="0.6">HOSPITAL</text>
+        <text x="54" y="49" font-family="'Montserrat', 'Prompt', sans-serif" font-weight="600" font-size="9.5" fill="#64748b" letter-spacing="2.8">HAT YAI</text>
+
+        <path d="M 4,56 H 174 A 56,56 0 0,1 230,112 A 56,56 0 0,1 174,168 H 4 Z" fill="#b21f2a"/>
+        <path d="M 4,168 H 174 A 55.5,55.5 0 0,1 230,223.5 A 55.5,55.5 0 0,1 174,279 H 4 Z" fill="#1e376d"/>
+        <polygon points="62,85 4,141 62,141" fill="#6e252b"/>
+
+        <rect x="62" y="85" width="54" height="165" rx="8" fill="#ffffff"/>
+        <rect x="3" y="141" width="172" height="53" rx="8" fill="#ffffff"/>
+      </svg>
+    `;
+  }
+
+  function renderSlotInputs() {
+    const container = document.getElementById("slotInputsContainer");
+    container.innerHTML = printSlots.map((slot, i) => `
+      <div class="slot-row">
+        <div class="slot-num">${i + 1}</div>
+        <input type="text" value="${slot.plate}" placeholder="ทะเบียน (เช่น 4กต5809)" oninput="updateSlot(${i}, 'plate', this.value)">
+        <input type="text" value="${slot.subText}" placeholder="แผนก (เช่น Emergency)" oninput="updateSlot(${i}, 'subText', this.value)">
+        <select onchange="updateSlot(${i}, 'groupId', this.value)">
+          ${colorGroups.map(g => `<option value="${g.groupId}" ${g.groupId === slot.groupId ? 'selected' : ''}>${g.label}</option>`).join("")}
+        </select>
+        <button class="btn btn-danger" style="padding:5px 0;" onclick="clearSingleSlot(${i})" title="ล้างช่องนี้">×</button>
+      </div>
+    `).join("");
+    updateQueueBadge();
+  }
+
+  function updateSlot(index, field, value) {
+    printSlots[index][field] = value;
+    renderStickerSheet();
+    updateQueueBadge();
+  }
+
+  function clearSingleSlot(index) {
+    printSlots[index] = { id: null, seq: "", plate: "", subText: "", groupId: "staff_bhh" };
+    renderSlotInputs();
+    renderStickerSheet();
+  }
+
+  function updateQueueBadge() {
+    const activeCount = printSlots.filter(s => s.plate.trim() !== "").length;
+    document.getElementById("queueCountBadge").innerText = activeCount;
+  }
+
+  function renderStickerSheet() {
+    const grid = document.getElementById("stickerGrid");
+    grid.innerHTML = "";
+    const baseDeptScale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dept-scale')) || 8.6;
+
+    printSlots.forEach((slot) => {
+      const grpObj = getGroupObj(slot.groupId);
+      const frameColor = grpObj.color;
+      const hasPlate = slot.plate.trim() !== "";
+
+      const item = document.createElement("div");
+      item.className = "sticker-item";
+      item.style.setProperty("--frame-color", frameColor);
+
+      if (!hasPlate) item.style.opacity = "0.18";
+
+      const plateLen = slot.plate.trim().length;
+      const plateFontSize = plateLen > 9 ? "11.5pt" : (plateLen > 7 ? "12.8pt" : "14pt");
+
+      const subLen = (slot.subText || "").trim().length;
+      const deptFontSize = subLen > 18 ? (baseDeptScale - 1.4) + "pt" : (subLen > 13 ? (baseDeptScale - 0.7) + "pt" : baseDeptScale + "pt");
+
+      item.innerHTML = `
+        <div class="sticker-inner-white">
+          ${getBhhPatternSvg()}
+          <div class="cross-text-overlay">
+            <div class="plate-label" style="font-size:${plateFontSize};">${slot.plate || ""}</div>
+            <div class="dept-label" style="font-size:${deptFontSize};">${slot.subText || ""}</div>
+          </div>
+        </div>
+      `;
+      grid.appendChild(item);
+    });
+  }
+
+  async function markCurrentQueueAsPrinted() {
+    let count = 0;
+    printSlots.forEach(slot => {
+      if (slot.id) {
+        const rec = dbRecords.find(r => r.id === slot.id);
+        if (rec) {
+          rec.printed = true;
+          rec.note = `พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH')} (${currentUser ? currentUser.username : ''})`;
+          count++;
+        }
+      }
+    });
+    await saveDatabase();
+    renderDatabaseTable();
+    alert(`✅ อัปเดตสถานะเป็น "พิมพ์แล้ว" จำนวน ${count} คันขึ้น Cloud เรียบร้อยครับ`);
+  }
+
+  function exportSheetAsImage() {
+    const sheet = document.getElementById("printableSheet");
+    html2canvas(sheet, { scale: 3, useCORS: true }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = `BHH_Stickers_8pcs_${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+  }
+
+  function exportDatabaseToExcel() {
+    if (dbRecords.length === 0) {
+      alert("ยังไม่มีข้อมูลในระบบให้ส่งออก");
+      return;
+    }
+    const exportData = dbRecords.map(r => ({
+      "ลำดับ": r.seq,
+      "วันที่แจ้งขอทำสติกเกอร์": r.reqDate,
+      "ชื่อ-นามสกุล เจ้าของรถ": r.ownerName,
+      "ประเภทบุคลากร": r.empType,
+      "ชื่อหน่วยงาน": r.dept,
+      "ประเภทรถ": r.vehicleType,
+      "ยี่ห้อรถ": r.brand,
+      "รุ่นของรถ": r.model,
+      "สีของรถ": r.color,
+      "เลขทะเบียนรถ": r.plate,
+      "ป้ายจังหวัด": r.province,
+      "สถานะการพิมพ์": r.printed ? "พิมพ์แล้ว" : "ยังไม่พิมพ์",
+      "หมายเหตุ": r.note
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ฐานข้อมูลสติกเกอร์รถ");
+    XLSX.writeFile(wb, `BHH_Car_Sticker_DB_${Date.now()}.xlsx`);
+  }
+
+  function downloadJsonBackup() {
+    const payload = JSON.stringify({ updatedAt: new Date().toISOString(), colorGroups, users: appUsers, records: dbRecords }, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `BHH_Sticker_Backup_${new Date().toISOString().slice(0,10)}.json`;
+    link.click();
+  }
+
+  async function clearDatabase() {
+    if (!currentUser || currentUser.role !== "admin") {
+      alert("เฉพาะ Admin เท่านั้นที่สามารถล้างฐานข้อมูลทั้งหมดได้");
+      return;
+    }
+    if (!confirm("⚠️ ยืนยันการล้างข้อมูลรถยนต์ทั้งหมดในระบบออนไลน์?")) return;
+    dbRecords = [];
+    selectedIds.clear();
+    await saveDatabase();
+    populateFilterDropdowns();
+    renderDatabaseTable();
+  }
+
+  window.onload = initSystem;
+</script>
+</body>
+</html>
